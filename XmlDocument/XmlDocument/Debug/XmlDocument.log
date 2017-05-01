@@ -1,1 +1,7 @@
-﻿  XmlDocument.vcxproj -> C:\Users\Abhijit\Desktop\RemoteCodePublisher_OOD\Debug\XmlDocument.lib
+﻿  XmlDocument.cpp
+  XmlParser.cpp
+  XmlElement.cpp
+  xmlElementParts.cpp
+  Tokenizer.cpp
+  Generating Code...
+  XmlDocument.vcxproj -> C:\Users\Abhijit\Desktop\RemoteCodePublisher_OOD\Debug\XmlDocument.lib

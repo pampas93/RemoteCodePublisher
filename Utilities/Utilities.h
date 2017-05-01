@@ -47,7 +47,7 @@
 #include <vector>
 #include <sstream>
 #include <functional>
-
+#include <iostream>
 namespace Utilities
 {
   class test
@@ -70,11 +70,8 @@ namespace Utilities
     static void sTitle(
       std::string src, size_t offset, size_t width, std::ostringstream& out, char underline = '-'
     );
-  };
-
-  struct PempStruct
-  {
-
+	static std::string trim(const std::string& src);
+	static std::string addHeaderAndFooterLines(const std::string& src);
   };
 
   void putline();

@@ -1,1 +1,15 @@
-﻿  Executive.vcxproj -> C:\Users\Abhijit\Desktop\RemoteCodePublisher_OOD\Debug\CodeAnalyzer.exe
+﻿  Executive.cpp
+  Utilities.cpp
+  Tokenizer.cpp
+  SemiExp.cpp
+  ScopeStack.cpp
+  Parser.cpp
+  ConfigureParser.cpp
+  ActionsAndRules.cpp
+  Logger.cpp
+  GrammarHelpers.cpp
+  FileSystem.cpp
+  FileMgr.cpp
+  AbstrSynTree.cpp
+  Generating Code...
+  Executive.vcxproj -> C:\Users\Abhijit\Desktop\RemoteCodePublisher_OOD\Debug\CodeAnalyzer.lib
