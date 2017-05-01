@@ -1,0 +1,128 @@
+<!----------------------------------------------------------------------------
+Utilities.h Help file for Project #3
+ Published 4 Apr 2017
+ Abhijit Srikanth, CSE687 - Object Oriented Design, Spring 2017
+
+ The below file is the webpage of the source code for Utilities.h and holds links to its dependent files
+
+ Note -Do not replace any markup characters with escape sequences
+----------------------------------------------------------------------------->
+<html>
+<head>
+<link rel = "stylesheet"type = "text/css"href = "../CodePublishHTML/myStyle.css" /></head>
+<body class = "indent">
+<script type="text/javascript" src="../CodePublishHTML/jquery-2.2.4.js"></script>
+<script type="text/javascript" src="../CodePublishHTML/myJS.js"></script><h3>Utilities.h</h3>
+<hr><div class = "indent"><h4>Dependencies :</h4><ul><li> <a href="../CodePublishHTML/Utilities.cpp.html">Utilities.cpp</a> </li>
+</ul></div><hr>
+<pre>
+#ifndef UTILITIES_H
+#define UTILITIES_H
+///////////////////////////////////////////////////////////////////////
+// Utilities.h - small, generally useful, helper classes             //
+// ver 1.4                                                           //
+// Language:    C++, Visual Studio 2015                              //
+// Platform:    Dell XPS 8900, Windows 10                            //
+// Application: Most Projects, CSE687 - Object Oriented Design       //
+// Author:      Jim Fawcett, Syracuse University, CST 4-187          //
+//              jfawcett@twcny.rr.com                                //
+///////////////////////////////////////////////////////////////////////
+/*
+* Package Operations:
+* -------------------
+* This package provides classes StringHelper and Converter and a global
+* function putline().  This class will be extended continuously for 
+* awhile to provide convenience functions for general C++ applications.
+*
+* Build Process:
+* --------------
+* Required Files: Utilities.h, Utilities.cpp
+*
+* Build Command: devenv Utilities.sln /rebuild debug
+*
+* Maintenance History:
+* --------------------
+* ver 1.4 : 26 Feb 2017
+* - changed StringHelper::split to use isspace from &lt;locale&gt; instead of &lt;cctype&gt;
+* ver 1.3 : 12 Aug 2016
+* - added overloads of title functions for std::ostringstreams
+* ver 1.2 : 10 Aug 2016
+* - added new function StringHelper::sTitle(...)
+* - changed the way string arguments are passed to each of the
+*   title functions
+* ver 1.1 : 06 Feb 2015
+* - fixed bug in split which turns a comma separated string into
+*   a vector of tokens.
+* - added comments
+* ver 1.0 : 05 Feb 2016
+* - first release
+*
+* Planned Additions and Changes:
+* ------------------------------
+* - none yet
+*/
+#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;sstream&gt;
+#include &lt;functional&gt;
+
+namespace Utilities
+{
+  class test
+  <div class="header">-  {</div><div class="content">
+  public:
+    std::vector&lt;std::string&gt; publicVector;
+  </div>};
+
+  class StringHelper
+  <div class="header">-  {</div><div class="content">
+  public:
+    static std::vector&lt;std::string&gt; split(const std::string& src);
+    static void Title(std::string src, std::ostream&  out = std::cout);
+    static void Title(std::string src, std::ostringstream& out);
+    static void title(std::string src, std::ostream& out = std::cout);
+    static void title(std::string src, std::ostringstream& out);
+    static void sTitle(
+      std::string src, size_t offset, size_t width, std::ostream& out = std::cout, char underline = '-'
+    );
+    static void sTitle(
+      std::string src, size_t offset, size_t width, std::ostringstream& out, char underline = '-'
+    );
+  </div>};
+
+  struct PempStruct
+  {
+
+  };
+
+  void putline();
+
+  template &lt;typename T&gt;
+  class Converter
+  <div class="header">-  {</div><div class="content">
+  public:
+    static std::string toString(const T& t);
+    static T toValue(const std::string& src);
+  </div>};
+
+  template &lt;typename T&gt;
+  std::string Converter&lt;T&gt;::toString(const T& t)
+  <div class="header">-  {</div><div class="content">
+    std::ostringstream out;
+    out &lt;&lt; t;
+    return out.str();
+  </div>}
+
+  template&lt;typename T&gt;
+  T Converter&lt;T&gt;::toValue(const std::string& src)
+  <div class="header">-  {</div><div class="content">
+    std::istringstream in(src);
+    T t;
+    in &gt;&gt; t;
+    return t;
+  </div>}
+}
+#endif
+</pre>
+</body>
+</html>
