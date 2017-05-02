@@ -7,6 +7,7 @@
 //#include "../Logger/Cpp11-BlockingQueue.h"
 #include "../Logger/Logger.h"
 #include "../Utilities/Utilities.h"
+#include "../Analyzer/Executive.h"
 #include <string>
 #include <iostream>
 
@@ -18,10 +19,12 @@ class ClientHandler
 public:
 	ClientHandler(Async::BlockingQueue<HttpMessage>& msgQ) : msgQ_(msgQ) {}
 	void operator()(Socket socket);
+	int findFromPort(HttpMessage msg);
+	//bool analyseContent(HttpMessage msg);
 private:
 	bool connectionClosed_;
 	HttpMessage readMessage(Socket& socket);
-	bool readFile(const std::string& filename, size_t fileSize, Socket& socket);
+	bool readFile(const std::string& filename, size_t fileSize, Socket& socket, std::string category);
 	Async::BlockingQueue<HttpMessage>& msgQ_;
 };
 
@@ -46,7 +49,7 @@ class MsgServer
 {
 public:
 	using EndPoint = std::string;
-	void execute(const size_t TimeBetweenMessages, const size_t NumMessages);
+	void execute(const size_t TimeBetweenMessages, const size_t NumMessages, int toPort);
 private:
 	HttpMessage makeMessage(size_t n, const std::string& msgBody, const EndPoint& ep);
 	void sendMessage(HttpMessage& msg, Socket& socket);

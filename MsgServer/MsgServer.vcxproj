@@ -164,6 +164,11 @@
     <ClInclude Include="..\Utilities\Utilities.h" />
     <ClInclude Include="MsgServer.h" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Analyzer\Executive.vcxproj">
+      <Project>{936434e9-93f0-467b-bbb7-d682483244ba}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

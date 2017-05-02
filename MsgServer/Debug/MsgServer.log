@@ -1,10 +1,2 @@
 ﻿  MsgServer.cpp
-  Utilities.cpp
-  Sockets.cpp
-  Logger.cpp
-  Cpp11-BlockingQueue.cpp
-  HttpMessage.cpp
-  FileSystem.cpp
-  Generating Code...
-  LINK : C:\Users\Abhijit\Desktop\RemoteCodePublisher_OOD\RemoteCodePublisher_OOD\Debug\MsgServer.exe not found or not built by the last incremental link; performing full link
   MsgServer.vcxproj -> C:\Users\Abhijit\Desktop\RemoteCodePublisher_OOD\RemoteCodePublisher_OOD\Debug\MsgServer.exe

@@ -90,6 +90,7 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
     // is this a file message?
 
     std::string filename = msg.findValue("file");
+	std::string category = msg.findValue("category");
     if (filename != "")
     {
       size_t contentSize;
@@ -99,7 +100,7 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
       else
         return msg;
 
-      readFile(filename, contentSize, socket);
+      readFile(filename, contentSize, socket, category);
     }
 
     if (filename != "")
@@ -138,9 +139,9 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
  * and when this function is running, continuosly send bytes until
  * fileSize bytes have been sent.
  */
-bool ClientHandler::readFile(const std::string& filename, size_t fileSize, Socket& socket)
+bool ClientHandler::readFile(const std::string& filename, size_t fileSize, Socket& socket,std::string category)
 {
-  std::string fqname = "../TestFiles/" + filename ;
+  std::string fqname = "../ServerFiles/" +category+"/"+ filename;	//Mention category also here
   FileSystem::File file(fqname);
   file.open(FileSystem::File::out, FileSystem::File::binary);
   if (!file.isGood())
@@ -151,7 +152,7 @@ bool ClientHandler::readFile(const std::string& filename, size_t fileSize, Socke
      * doesn't gracefully collect and dump them as it should.  That's
      * an exercise left for students.
      */
-    Show::write("\n\n  can't open file " + fqname);
+    std::cout<<("\n\n  can't open file " + fqname);
     return false;
   }
 
@@ -189,7 +190,7 @@ void ClientHandler::operator()(Socket socket)
     HttpMessage msg = readMessage(socket);
     if (connectionClosed_ || msg.bodyString() == "quit")
     {
-      Show::write("\n\n  clienthandler thread is terminating");
+		std::cout << ("\n\n  clienthandler thread is terminating");
       break;
     }
     msgQ_.enQ(msg);
@@ -197,24 +198,14 @@ void ClientHandler::operator()(Socket socket)
 }
 
 
-
-
 //------starting Msg Server-------------
 
 
-//----< factory for creating messages >------------------------------
-/*
-* This function only creates one type of message for this demo.
-* - To do that the first argument is 1, e.g., index for the type of message to create.
-* - The body may be an empty string.
-* - EndPoints are strings of the form ip:port, e.g., localhost:8081. This argument
-*   expects the receiver EndPoint for the toAddr attribute.
-*/
 HttpMessage MsgServer::makeMessage(size_t n, const std::string& body, const EndPoint& ep)
 {
 	HttpMessage msg;
 	HttpMessage::Attribute attrib;
-	EndPoint myEndPoint = "localhost:8081";  // ToDo: make this a member of the sender
+	EndPoint myEndPoint = "localhost:8080";  // ToDo: make this a member of the sender
 											 // given to its constructor.
 	switch (n)
 	{
@@ -247,13 +238,6 @@ void MsgServer::sendMessage(HttpMessage& msg, Socket& socket)
 }
 
 
-//----< send file using socket >-------------------------------------
-/*
-* - Sends a message to tell receiver a file is coming.
-* - Then sends a stream of bytes until the entire file
-*   has been sent.
-* - Sends in binary mode which works for either text or binary.
-*/
 bool MsgServer::sendFile(const std::string& filename, Socket& socket)
 {
 	// assumes that socket is connected
@@ -270,7 +254,7 @@ bool MsgServer::sendFile(const std::string& filename, Socket& socket)
 	HttpMessage msg = makeMessage(1, "", "localhost::8082");
 	msg.addAttribute(HttpMessage::Attribute("file", filename));
 	msg.addAttribute(HttpMessage::Attribute("content-length", sizeString));
-	sendMessage(msg, socket);
+	//sendMessage(msg, socket);
 	const size_t BlockSize = 2048;
 	Socket::byte buffer[BlockSize];
 	while (true)
@@ -287,9 +271,9 @@ bool MsgServer::sendFile(const std::string& filename, Socket& socket)
 	file.close();
 	return true;
 }
-//----< this defines the behavior of the client >--------------------
 
-void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessages)
+//----< this defines the behavior of the client >--------------------
+void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessages, int toPort)
 {
 	// send NumMessages messages
 
@@ -297,20 +281,20 @@ void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 	size_t myCount = counter.count();
 	std::string myCountString = Utilities::Converter<size_t>::toString(myCount);
 
-	Show::attach(&std::cout);
+	/*Show::attach(&std::cout);
 	Show::start();
 
 	Show::title(
-		"Starting HttpMessage client" + myCountString +
+		"Starting HttpMessage Server to send" + myCountString +
 		" on thread " + Utilities::Converter<std::thread::id>::toString(std::this_thread::get_id())
-	);
+	);*/
 	try
 	{
 		SocketSystem ss;
 		SocketConnecter si;
-		while (!si.connect("localhost", 8082))
+		while (!si.connect("localhost", toPort))
 		{
-			Show::write("\n client waiting to connect");
+			Show::write("\n Server waiting to connect");
 			::Sleep(100);
 		}
 
@@ -322,18 +306,14 @@ void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 
 			for (size_t i = 0; i < NumMessages; ++i)
 			{
-				std::string msgBody =
-					"<msg>Message #" + Converter<size_t>::toString(i + 1) +
-					" from Server #" + myCountString + "</msg>";
-				msg = makeMessage(1, msgBody, "localhost:8082");
-				/*
-				* Sender class will need to accept messages from an input queue
-				* and examine the toAddr attribute to see if a new connection
-				* is needed.  If so, it would either close the existing connection
-				* or save it in a map[url] = socket, then open a new connection.
-				*/
+				std::string msgBody ="<msg>Message #" + Converter<size_t>::toString(i + 1) +" from Server #" + myCountString + "</msg>";
+				std::string add = "localhost:";
+				add.append(Converter<int>::toString(toPort));
+				msg = makeMessage(1, msgBody, add);
+				
 				sendMessage(msg, si);
-				Show::write("\n\n  client" + myCountString + " sent\n" + msg.toIndentedString());
+				//Show::write("\n\n  client" + myCountString + " sent\n" + msg.toIndentedString());
+				std::cout << ("\n\n  Server sent" + msg.toIndentedString());
 				::Sleep(TimeBetweenMessages);
 			}
 		}
@@ -343,24 +323,6 @@ void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 			std::string exMsg = "\n  " + std::string(exc.what()) + "\n\n";
 			Show::write(exMsg);
 		}
-		//  send all *.cpp files from TestFiles folder
-
-		//std::vector<std::string> files = FileSystem::Directory::getFiles("../TestFiles", "*.cpp");
-		////std::vector<std::string> files = FileSystem::Directory::getFiles(directory, "*.h");
-		//for (size_t i = 0; i < files.size(); ++i)
-		//{
-		//	Show::write("\n\n  sending file " + files[i]);
-		//	sendFile(files[i], si);
-		//}
-
-		// shut down server's client handler
-
-		msg = makeMessage(1, "quit", "toAddr:localhost:8082");
-		sendMessage(msg, si);
-		Show::write("\n\n  client" + myCountString + " sent\n" + msg.toIndentedString());
-
-		Show::write("\n");
-		Show::write("\n  All done folks");
 	}
 	catch (std::exception& exc)
 	{
@@ -373,9 +335,50 @@ void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 
 
 
+//------------------- Analyse received message functions below --------
 
 
+//---------- Finds and returns from Port in Msg ------ 
+int findFromPort(HttpMessage msg)
+{
+	//size_t port;
+	std::string temp = msg.findValue("fromAddr").substr(10, 4);
+	int x = atoi(temp.c_str());
 
+	return x;
+}
+
+void analyseMsgContent(HttpMessage msg)
+{
+	std::string type = msg.findValue("type");
+	std::string body = msg.bodyString();
+
+//	Call each Upload or delete or other type functions inside this; and call execute inside that function
+
+
+	if (type == "upload" ) {
+		//need to send message now, saying successful
+		
+		//&& (body.find("upload over") != std::string::npos inside that function
+	}
+	else if (type == "delete" ) {
+		//need to send message now, saying successful
+		
+	}
+	else if (type == "display") {
+		//need to send message now, saying successful
+
+	}
+	else if (type == "publish") {
+		//need to send message now, saying successful
+
+	}
+	else if (type == "download") {
+		//need to send message now, saying successful
+
+	}
+
+}
 
 
 
@@ -391,27 +394,36 @@ int main()
 	Show::start();
 	Show::title("\n  HttpMessage Server started");
 */
-	MsgServer c1;
-	std::thread t1(
-		[&]() { c1.execute(1000, 5); } // 20 messages 100 millisec apart
-	);
+	//using namespace CodeAnalysis;
 
-	t1.join();
-
+	CodeAnalysis::CodeAnalysisExecutive x;
 	
 	Async::BlockingQueue<HttpMessage> msgQ;
+	MsgServer c1;
 
 	try
 	{
 		SocketSystem ss;
-		SocketListener sl(8081, Socket::IP6);
+		SocketListener sl(8080, Socket::IP6);
 		ClientHandler cp(msgQ);
 		sl.start(cp);
 		while (true)
 		{
 			HttpMessage msg = msgQ.deQ();
-			std::cout << msg.bodyString();
-			Show::write("\n\n  server recvd message with body contents:\n" + msg.bodyString());
+			std::cout << "\nMessage received from Client";
+			std::cout << std::endl << msg.bodyString()<<std::endl;
+
+			size_t fromPort = findFromPort(msg);
+			analyseMsgContent(msg);
+
+			//Below thread need not be called for every message.
+			std::thread t1(
+				[&]() { c1.execute(500, 1, fromPort); } // 20 messages 100 millisec apart
+			);
+
+			t1.detach();
+			
+			//Show::write("\n\n  server recvd message with body contents:\n" + msg.bodyString());
 		}
 	}
 	catch (std::exception& exc)
@@ -420,6 +432,16 @@ int main()
 		std::string exMsg = "\n  " + std::string(exc.what()) + "\n\n";
 		Show::write(exMsg);
 	}
+
+
+	//MsgServer c1;
+	//std::thread t1(
+	//	[&]() { c1.execute(1000, 5); } // 20 messages 100 millisec apart
+	//);
+
+	//t1.join();
+
+
 	//getchar();
 
 }
