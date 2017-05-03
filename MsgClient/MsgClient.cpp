@@ -38,6 +38,9 @@
 #include "MsgClient.h"
 size_t ClientCounter::clientCount = 0;
 
+bool analyzeMessageFromServer(HttpMessage m);
+HttpMessage listenerFunction();
+
 
 //----< factory for creating messages >------------------------------
 /*
@@ -87,7 +90,7 @@ void MsgClient::sendMessage(HttpMessage& msg, Socket& socket)
 //--------------------Sending file to server -----------------------
 bool MsgClient::sendFile(const std::string& filenameAbs, Socket& socket, std::string category)
 {
-	std::string fqname = filenameAbs;
+	std::string fqname = "../TestFiles/"+filenameAbs;				//Neeeeeeed to change. only for testing
 	FileSystem::FileInfo fi(fqname);
 	size_t fileSize = fi.size();
 	std::string sizeString = Converter<size_t>::toString(fileSize);
@@ -121,16 +124,16 @@ bool MsgClient::sendFile(const std::string& filenameAbs, Socket& socket, std::st
 //----< this defines the behavior of the client >--------------------
 void MsgClient::execute(const size_t TimeBetweenMessages, const size_t NumMessages, std::string type, std::string category, std::string path )
 {
-	Show::attach(&std::cout);
+	/*Show::attach(&std::cout);
 	Show::start();
-	Show::title("Starting HttpMessage client on thread " + Utilities::Converter<std::thread::id>::toString(std::this_thread::get_id()));
+	Show::title("Starting HttpMessage client on thread " + Utilities::Converter<std::thread::id>::toString(std::this_thread::get_id()));*/
 	try
 	{
 		SocketSystem ss;
 		SocketConnecter si;
 		while (!si.connect("localhost", 8080))
 		{
-			Show::write("\n client waiting to connect");
+			//Show::write("\n client waiting to connect");
 			::Sleep(100);
 		}
 		HttpMessage msg;
@@ -141,12 +144,12 @@ void MsgClient::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 			sendFiles2Server(si, category);
 		}
 		else if (type == "delete" || type == "publish" || type == "display" || type == "download") {
-			msg = makeMessage(1, type +"message", "localhost:8080", category, type);
+			msg = makeMessage(1, type +" message", "localhost:8080", category, type);
 			sendMessage(msg, si);
 		}
 
-		Show::write("\n");
-		Show::write("\n  All done folks");
+		/*Show::write("\n");
+		Show::write("\n  All done folks");*/
 	}
 	catch (std::exception& exc)
 	{
@@ -165,6 +168,13 @@ void MsgClient::sendFiles2Server(Socket & socket, std::string category)
 		Show::write("\n\n  sending file " + files[i]);
 		sendFile(files[i], socket, category);
 	}
+	std::vector<std::string> filesx = FileSystem::Directory::getFiles("../TestFiles", "*.h");
+	for (size_t i = 0; i < filesx.size(); ++i)
+	{
+		Show::write("\n\n  sending file " + filesx[i]);
+		sendFile(filesx[i], socket, category);
+	}
+
 	HttpMessage m;															//Message sent to tell server upload is over
 	m = makeMessage(1, "upload over", "localhost:8080", category, "upload");
 	sendMessage(m, socket);
@@ -297,9 +307,9 @@ void ServerHandler::operator()(Socket socket)
 	}
 }
 
-void listenerFunction()
-{
 
+HttpMessage MsgClient::listenerFunction()
+{
 	Async::BlockingQueue<HttpMessage> msgQ;
 	try
 	{
@@ -311,19 +321,18 @@ void listenerFunction()
 		while (true)
 		{
 			HttpMessage msg = msgQ.deQ();
+			std::cout << msg.bodyString();
 			
 			std::cout << msg.bodyString();		// response from server
-
-			//break if response is "upload over"
-
 			if (!analyzeMessageFromServer(msg)) {
+				sl.close();
+				return msg;
 				break;
 			}
-
-			//Show::write("\n\n  Client Received message with body contents:\n" + msg.bodyString());
-			//break;
 		}
+		//return HttpMessage();
 	}
+	//return HttpMessage();
 	catch (std::exception& exc)
 	{
 		Show::write("\n  Exeception caught: ");
@@ -333,28 +342,27 @@ void listenerFunction()
 }
 
 //-----------Returns false if msg is the last message from server. If more responses are yet to come, returns true ------
-bool analyzeMessageFromServer(HttpMessage m)
+bool MsgClient::analyzeMessageFromServer(HttpMessage m)
 {
 	std::string message_body = m.bodyString();
 	std::string type = m.findValue("type");
 	std::string filename = m.findValue("file");
 
-	if (message_body.find("upload over") != std::string::npos)		//end of Download option, server sends a message with body "upload over"
+	if (message_body.find("Download over") != std::string::npos)		//end of Download option, server sends a message with body "upload over"
 		return false;
-	if (filename != "")		//If message is a received file
-		return true;
-	if (type == "display" || type == "delete" || type == "publish")
+	//if (filename != "")		//If message is a received file
+	//	return true;
+	if (type == "display" || type == "delete" || type == "publish" || type == "upload")
 		return false;
 
-	return false;
-
+	return true;
 }
 
 
 
 //------------------------ GUI Functions ----------------------//
 
-std::string getCategory(int c) {
+std::string MsgClient::getCategory(int c) {
 	switch (c) {
 	case 1:
 		return "category1";
@@ -372,59 +380,62 @@ std::string getCategory(int c) {
 }
 
 
-HttpMessage MsgClient::uploadFunction(std::string path, std::vector<std::string> files, int cat)
+std::string MsgClient::uploadFunction(std::string path, std::vector<std::string> files, int cat)
 {
 	filestoOpen = files;
 	std::string category = getCategory(cat);
 	std::thread t1(
-		[&]() { execute(300, 1, "upload", category, path); } // 20 messages 100 millisec apart
+		[&]() { execute(200, 1, "upload", category, path); } 
 	);
 	t1.join();
 
-	listenerFunction();
-
-	return HttpMessage();
+	HttpMessage x = listenerFunction();
+	std::cout << "\n\n" << x.bodyString();
+	return x.bodyString();
 }
 
-HttpMessage MsgClient::deleteFunction(int cat)
+std::string MsgClient::deleteFunction(int cat)
 {
 	std::string category = getCategory(cat);
 	std::thread t1(
-		[&]() { execute(300, 1, "delete", category); } // 20 messages 100 millisec apart
+		[&]() { execute(200, 1, "delete", category); } 
 	);
 	t1.join();
 
-	
-
-	return HttpMessage();
+	HttpMessage x = listenerFunction();
+	std::cout << "\n\n" << x.bodyString();
+	return x.bodyString();
 
 }
 
-HttpMessage MsgClient::publishFunction(int cat)
+std::string MsgClient::publishFunction(int cat)
 {
 	std::string category = getCategory(cat);
 	std::thread t1(
-		[&]() { execute(300, 1, "publish", category); } // 20 messages 100 millisec apart
+		[&]() { execute(200, 1, "publish", category); } 
 	);
 	t1.join();
 
-	return HttpMessage();
-
+	HttpMessage x = listenerFunction();
+	std::cout << "\n\n" << x.bodyString();
+	return x.bodyString();
 }
 
-HttpMessage MsgClient::displayFunction(int cat)
+std::string MsgClient::displayFunction(int cat)
 {
 	std::string category = getCategory(cat);
 	std::thread t1(
-		[&]() { execute(300, 1, "display", category); } // 20 messages 100 millisec apart
+		[&]() { execute(300, 1, "display", category); } 
 	);
 	t1.join();
 
-	return HttpMessage();
+	HttpMessage x = listenerFunction();
+	std::cout << "\n\nList of Files in category\n\n" << x.bodyString();
+	return x.bodyString();
 
 }
 
-HttpMessage MsgClient::downloadFunction(int cat, std::vector<std::string> filesToOpen)
+std::string MsgClient::downloadFunction(int cat, std::vector<std::string> filesToOpen)
 {
 	std::string category = getCategory(cat);
 	std::thread t1(
@@ -432,7 +443,9 @@ HttpMessage MsgClient::downloadFunction(int cat, std::vector<std::string> filesT
 	);
 	t1.join();
 
-	return HttpMessage();	
+	HttpMessage x = listenerFunction();
+	std::cout << "\n\n" << x.bodyString();
+	return x.bodyString();
 }
 
 
@@ -445,10 +458,23 @@ int main()
 {
 	::SetConsoleTitle(L"Clients Running on Threads");
 
-	Show::title("Demonstrating two HttpMessage Clients each running on a child thread");
+	//Show::title("Demonstrating two HttpMessage Clients each running on a child thread");
 
 	MsgClient c;
-	c.uploadFunction("../TestFiles", c.filestoSend,1);
+	//c.deleteFunction(2);
+	
+	c.uploadFunction("../TestFiles", c.filestoSend, 2);
+	c.publishFunction(2);
+	c.downloadFunction(2);
+	c.displayFunction(2);
+	c.deleteFunction(2);
+	/*c.deleteFunction(2);
+	c.displayFunction(2);*/
+	/*c.uploadFunction("../TestFiles", c.filestoSend,1);
+	c.uploadFunction("../TestFiles", c.filestoSend,2);
+	c.displayFunction(2);
+	c.deleteFunction(1);
+	c.displayFunction(2);*/
 
 	while (true) {
 

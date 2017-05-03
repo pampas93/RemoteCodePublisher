@@ -145,6 +145,7 @@ namespace CodeAnalysis
     CodeAnalysisExecutive(const CodeAnalysisExecutive&) = delete;
     CodeAnalysisExecutive& operator=(const CodeAnalysisExecutive&) = delete;
 
+	void Dependency4RemoteCodePublisher(std::string category);
     void showCommandLineArguments(int argc, char* argv[]);
     bool ProcessCommandLine(int argc, char* argv[]);
     FileMap& getFileMap();
@@ -202,7 +203,7 @@ namespace CodeAnalysis
     std::ofstream* pLogStrm_ = nullptr;
 	std::string pathDepXml = "../../XML_dependency.xml";
 	std::string pathSccXml = "../../XML_SCC.xml";
-	std::string directoryPath = "../CodePublishHTML";
+	std::string directoryPath = "../MsgServer/ServerFiles/PublishedFiles/";
 	Files subFiles;
   };
 }

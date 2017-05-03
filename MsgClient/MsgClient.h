@@ -3,6 +3,7 @@
 #include "../HttpMessage/HttpMessage.h"
 #include "../Sockets/Sockets.h"
 #include "../FileSystem/FileSystem.h"
+#include "../Cpp11-BlockingQueue/Cpp11-BlockingQueue.h"
 #include "../Logger/Logger.h"
 #include "../Utilities/Utilities.h"
 #include "../Analyzer/Executive.h"
@@ -34,12 +35,15 @@ public:
 	using EndPoint = std::string;
 	void execute(const size_t TimeBetweenMessages, const size_t NumMessages, std::string type, std::string category, std::string path = "none");
 	//std::vector<std::string> getAllFiles(std::string path);
-	HttpMessage uploadFunction(std::string path, std::vector<std::string> files, int cat);
-	HttpMessage deleteFunction(int cat);
-	HttpMessage publishFunction(int cat);
-	HttpMessage displayFunction(int cat);
-	HttpMessage downloadFunction(int cat, std::vector<std::string> filesToOpen);
-	void startListening();
+	std::string uploadFunction(std::string path, std::vector<std::string> files, int cat);
+	std::string deleteFunction(int cat);
+	std::string publishFunction(int cat);
+	std::string displayFunction(int cat);
+	std::string downloadFunction(int cat, std::vector<std::string> filesToOpen = {""});
+
+	HttpMessage listenerFunction();
+	bool analyzeMessageFromServer(HttpMessage m);
+	std::string getCategory(int c);
 
 	void sendFiles2Server(Socket& socket, std::string category);
 

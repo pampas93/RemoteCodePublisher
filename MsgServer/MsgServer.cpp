@@ -77,7 +77,6 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
     }
   }
   // If client is done, connection breaks and recvString returns empty string
-
   if (msg.attributes().size() == 0)
   {
     connectionClosed_ = true;
@@ -87,8 +86,6 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
 
   if (msg.attributes()[0].first == "POST")
   {
-    // is this a file message?
-
     std::string filename = msg.findValue("file");
 	std::string category = msg.findValue("category");
     if (filename != "")
@@ -106,7 +103,6 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
     if (filename != "")
     {
       // construct message body
-
       msg.removeAttribute("content-length");
       std::string bodyString = "<file>" + filename + "</file>";
       std::string sizeString = Converter<size_t>::toString(bodyString.size());
@@ -133,6 +129,7 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
   }
   return msg;
 }
+
 //----< read a binary file from socket and save >--------------------
 /*
  * This function expects the sender to have already send a file message, 
@@ -141,17 +138,11 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
  */
 bool ClientHandler::readFile(const std::string& filename, size_t fileSize, Socket& socket,std::string category)
 {
-  std::string fqname = "../ServerFiles/" +category+"/"+ filename;	//Mention category also here
+  std::string fqname = "ServerFiles/SourceFiles/" +category+"/"+ filename;	//Mention category also here
   FileSystem::File file(fqname);
   file.open(FileSystem::File::out, FileSystem::File::binary);
   if (!file.isGood())
   {
-    /*
-     * This error handling is incomplete.  The client will continue
-     * to send bytes, but if the file can't be opened, then the server
-     * doesn't gracefully collect and dump them as it should.  That's
-     * an exercise left for students.
-     */
     std::cout<<("\n\n  can't open file " + fqname);
     return false;
   }
@@ -201,7 +192,7 @@ void ClientHandler::operator()(Socket socket)
 //------starting Msg Server-------------
 
 
-HttpMessage MsgServer::makeMessage(size_t n, const std::string& body, const EndPoint& ep)
+HttpMessage MsgServer::makeMessage(size_t n, const std::string& body, const EndPoint& ep, std::string category, std::string type)
 {
 	HttpMessage msg;
 	HttpMessage::Attribute attrib;
@@ -213,6 +204,8 @@ HttpMessage MsgServer::makeMessage(size_t n, const std::string& body, const EndP
 		msg.clear();
 		msg.addAttribute(HttpMessage::attribute("POST", "Message"));
 		msg.addAttribute(HttpMessage::Attribute("mode", "oneway"));
+		msg.addAttribute(HttpMessage::Attribute("category", category));
+		msg.addAttribute(HttpMessage::Attribute("type", type));
 		msg.addAttribute(HttpMessage::parseAttribute("toAddr:" + ep));
 		msg.addAttribute(HttpMessage::parseAttribute("fromAddr:" + myEndPoint));
 
@@ -229,20 +222,19 @@ HttpMessage MsgServer::makeMessage(size_t n, const std::string& body, const EndP
 	}
 	return msg;
 }
-//----< send message using socket >----------------------------------
 
+//----< send message using socket >----------------------------------
 void MsgServer::sendMessage(HttpMessage& msg, Socket& socket)
 {
 	std::string msgString = msg.toString();
 	socket.send(msgString.size(), (Socket::byte*)msgString.c_str());
 }
 
-
-bool MsgServer::sendFile(const std::string& filename, Socket& socket)
+bool MsgServer::sendFile(const std::string& filename, Socket& socket, std::string category, std::string cPort)
 {
 	// assumes that socket is connected
 
-	std::string fqname = "../TestFiles/" + filename;
+	std::string fqname = "ServerFiles/PublishedFiles/" +category+ "/"+filename;
 	FileSystem::FileInfo fi(fqname);
 	size_t fileSize = fi.size();
 	std::string sizeString = Converter<size_t>::toString(fileSize);
@@ -251,10 +243,11 @@ bool MsgServer::sendFile(const std::string& filename, Socket& socket)
 	if (!file.isGood())
 		return false;
 
-	HttpMessage msg = makeMessage(1, "", "localhost::8082");
-	msg.addAttribute(HttpMessage::Attribute("file", filename));
+	HttpMessage msg = makeMessage(1, "", cPort, category, "download");
+	std::string filenn = FileSystem::Path::getName(filename);
+	msg.addAttribute(HttpMessage::Attribute("file", filenn));
 	msg.addAttribute(HttpMessage::Attribute("content-length", sizeString));
-	//sendMessage(msg, socket);
+	sendMessage(msg, socket);
 	const size_t BlockSize = 2048;
 	Socket::byte buffer[BlockSize];
 	while (true)
@@ -273,21 +266,15 @@ bool MsgServer::sendFile(const std::string& filename, Socket& socket)
 }
 
 //----< this defines the behavior of the client >--------------------
-void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessages, int toPort)
+void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessages, int toPort, std::string type, std::string category)
 {
 	// send NumMessages messages
 
 	ServerCounter counter;
 	size_t myCount = counter.count();
 	std::string myCountString = Utilities::Converter<size_t>::toString(myCount);
+	std::string cPort = "localhost:" + std::to_string(toPort);
 
-	/*Show::attach(&std::cout);
-	Show::start();
-
-	Show::title(
-		"Starting HttpMessage Server to send" + myCountString +
-		" on thread " + Utilities::Converter<std::thread::id>::toString(std::this_thread::get_id())
-	);*/
 	try
 	{
 		SocketSystem ss;
@@ -297,32 +284,27 @@ void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 			Show::write("\n Server waiting to connect");
 			::Sleep(100);
 		}
-
-		// send a set of messages
-
 		HttpMessage msg;
-
-		try {
-
-			for (size_t i = 0; i < NumMessages; ++i)
-			{
-				std::string msgBody ="<msg>Message #" + Converter<size_t>::toString(i + 1) +" from Server #" + myCountString + "</msg>";
-				std::string add = "localhost:";
-				add.append(Converter<int>::toString(toPort));
-				msg = makeMessage(1, msgBody, add);
-				
-				sendMessage(msg, si);
-				//Show::write("\n\n  client" + myCountString + " sent\n" + msg.toIndentedString());
-				std::cout << ("\n\n  Server sent" + msg.toIndentedString());
-				::Sleep(TimeBetweenMessages);
-			}
+		if (type == "upload") {
+			msg = makeMessage(1, "Upload Successful", cPort, category, type);
+			sendMessage(msg, si);		}
+		else if (type == "publish") {
+			msg = makeMessage(1, "Publish Successful", cPort, category, type);
+			sendMessage(msg, si);		}
+		else if (type == "delete") {
+			msg = makeMessage(1, "Delete Successful", cPort, category, type);
+			sendMessage(msg, si);		}
+		else if (type == "display") {
+			std::string allSourceFiles = getAllhtmlFiles(category);
+			msg = makeMessage(1, allSourceFiles, cPort, category, type);
+			sendMessage(msg, si);
 		}
-		catch (std::exception& exc)
-		{
-			Show::write("\n  Exeception caught: ");
-			std::string exMsg = "\n  " + std::string(exc.what()) + "\n\n";
-			Show::write(exMsg);
+		else if (type == "download") {
+			msg = makeMessage(1, "Downloading into client", cPort, category, type);
+			sendMessage(msg, si);
+			sendFiles2Client(si, category, cPort);
 		}
+		
 	}
 	catch (std::exception& exc)
 	{
@@ -333,13 +315,41 @@ void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 }
 
 
+std::string MsgServer::getAllhtmlFiles(std::string category)
+{
+	std::string allFiles;
+	std::vector<std::string> files = FileSystem::Directory::getFiles("ServerFiles/PublishedFiles/" + category + "/", "*.*");
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		allFiles.append(files[i]);
+		allFiles.append("\n");
+	}
+	return allFiles;
+}
+
+void MsgServer::sendFiles2Client(Socket & socket, std::string category, std::string cPort)
+{
+	std::vector<std::string> files = FileSystem::Directory::getFiles("ServerFiles/PublishedFiles/"+category+"/","*.*");
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		Show::write("\n\n  Downloading file " + files[i]);
+		sendFile(files[i], socket, category, cPort);
+	}
+
+	HttpMessage m;															//Message sent to tell server upload is over
+	m = makeMessage(1, "Download over", cPort, category, "upload");
+	sendMessage(m, socket);
+
+}
+
+
 
 
 //------------------- Analyse received message functions below --------
 
 
 //---------- Finds and returns from Port in Msg ------ 
-int findFromPort(HttpMessage msg)
+int ClientHandler::findFromPort(HttpMessage msg)
 {
 	//size_t port;
 	std::string temp = msg.findValue("fromAddr").substr(10, 4);
@@ -348,37 +358,89 @@ int findFromPort(HttpMessage msg)
 	return x;
 }
 
-void analyseMsgContent(HttpMessage msg)
+void ClientHandler::analyseMsgContent(HttpMessage msg)
 {
 	std::string type = msg.findValue("type");
 	std::string body = msg.bodyString();
+	std::string category = msg.findValue("category");
+	size_t fromPort = findFromPort(msg);
+
+	MsgServer c1;
 
 //	Call each Upload or delete or other type functions inside this; and call execute inside that function
-
-
 	if (type == "upload" ) {
+		//Done!
+		if (body.find("upload over") != std::string::npos) {
+			std::thread t1(	[&]() { c1.execute(100, 1, fromPort, type, category); } );
+			t1.join();
+		}
+		return;
 		//need to send message now, saying successful
-		
 		//&& (body.find("upload over") != std::string::npos inside that function
 	}
 	else if (type == "delete" ) {
-		//need to send message now, saying successful
+
+		deleteCategory(category);
+		std::thread t1(	[&]() { c1.execute(100, 1, fromPort, type, category); } );
+		t1.join();
 		
 	}
 	else if (type == "display") {
-		//need to send message now, saying successful
+
+		std::thread t1([&]() { c1.execute(100, 1, fromPort, type, category); });
+		t1.join();
 
 	}
 	else if (type == "publish") {
+		publishCategory(category);
+		std::thread t1(	[&]() { c1.execute(100, 1, fromPort, type, category); } );
+		t1.join();
 		//need to send message now, saying successful
 
 	}
 	else if (type == "download") {
+		//downloadCategory(category);
+		std::thread t1([&]() { c1.execute(100, 1, fromPort, type, category); });
+		t1.join();
 		//need to send message now, saying successful
 
 	}
-
 }
+
+bool ClientHandler::deleteCategory(std::string category)
+{
+	std::vector<std::string> files = FileSystem::Directory::getFiles("ServerFiles/SourceFiles/"+category+"/", "*.*");
+	for (size_t i = 0; i < files.size(); ++i)
+	{
+		std::string fileFullPath = "ServerFiles/SourceFiles/" + category + "/" + files[i];
+		std::remove(fileFullPath.c_str());
+	}
+	std::vector<std::string> htmlfiles = FileSystem::Directory::getFiles("ServerFiles/PublishedFiles/" + category + "/", "*.html");
+	for (size_t i = 0; i < htmlfiles.size(); ++i)
+	{
+		std::string fileFullPath = "ServerFiles/PublishedFiles/" + category + "/" + htmlfiles[i];
+		std::remove(fileFullPath.c_str());
+	}
+	return true;
+}
+
+bool ClientHandler::publishCategory(std::string category)
+{
+	char * array[7];
+	std::string path = "ServerFiles/SourceFiles/" + category + "/";
+	std::string x[] = { "simbly",path,"*.h","*.cpp","/m","/f","/r" };
+	for (int i = 0; i < 7; i++) {
+		const char* xx = x[i].c_str();
+		array[i] = _strdup(xx);
+	}
+
+	CodeAnalysis::CodeAnalysisExecutive exexec;
+	exexec.ProcessCommandLine(7, array);
+
+	exexec.Dependency4RemoteCodePublisher(category);
+	return true;
+}
+
 
 
 
@@ -413,24 +475,23 @@ int main()
 			std::cout << "\nMessage received from Client";
 			std::cout << std::endl << msg.bodyString()<<std::endl;
 
-			size_t fromPort = findFromPort(msg);
+			cp.analyseMsgContent(msg);
+
+			/*size_t fromPort = findFromPort(msg);
 			analyseMsgContent(msg);
 
-			//Below thread need not be called for every message.
+			//Below thread to be called in appropriate functions
 			std::thread t1(
 				[&]() { c1.execute(500, 1, fromPort); } // 20 messages 100 millisec apart
 			);
-
-			t1.detach();
-			
-			//Show::write("\n\n  server recvd message with body contents:\n" + msg.bodyString());
+			t1.detach();*/
 		}
 	}
 	catch (std::exception& exc)
 	{
-		Show::write("\n  Exeception caught: ");
+		/*Show::write("\n  Exeception caught: ");
 		std::string exMsg = "\n  " + std::string(exc.what()) + "\n\n";
-		Show::write(exMsg);
+		Show::write(exMsg);*/
 	}
 
 

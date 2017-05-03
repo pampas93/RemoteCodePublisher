@@ -168,6 +168,7 @@ void showUsage()
 }
 //----< show command line arguments >--------------------------------
 
+
 void CodeAnalysisExecutive::showCommandLineArguments(int argc, char* argv[])
 {
   std::ostringstream out;
@@ -962,9 +963,51 @@ std::string CodeAnalysisExecutive::systemTime()
   std::string temp(buffer);
   return temp;
 }
+
+//------------------ For Remote Dependency -------------------------//
+
+
+void CodeAnalysis::CodeAnalysisExecutive::Dependency4RemoteCodePublisher(std::string category)
+{
+	setDisplayModes();
+	startLogger(std::cout);
+	getSourceFiles();
+	processSourceCode(true);
+	complexityAnalysis();
+	dispatchOptionalDisplays();
+	//exec.flushLogger();
+	Rslt::write("\n");
+	std::ostringstream out;
+	out << "\n  " << std::setw(10) << "searched" << std::setw(6) << numDirs() << " dirs";
+	out << "\n  " << std::setw(10) << "processed" << std::setw(6) << numFiles() << " files";
+	Rslt::write(out.str());
+	Rslt::write("\n");
+	stopLogger();
+
+	Files allsubfiles = getAllsubFiles();
+	Type_Table tb;												//Starting of type table
+	tb.populateTypeTable();
+	DependencyTable dp(tb.returnTypeTable(), allsubfiles);		//Starting of dependency table
+	std::string xmlD = dp.dependencyMain(getPathDepXml());
+	dp.showDep();
+	htmlClass hClass;
+	std::string direc2publish = getPathDir() + category + "/";
+	std::string toOpen = hClass.htmlMainClass(dp, direc2publish, tb.returnLineMap());
+	openBrowser(toOpen);
+}
+
+
+
+
+
+
 //----< conduct code analysis >--------------------------------------
 
 #include <fstream>
+
+#ifdef Test_Executive
+
+
 
 int main(int argc, char* argv[])
 {  using namespace CodeAnalysis;
@@ -1010,3 +1053,5 @@ int main(int argc, char* argv[])
     return 1;			}
   getchar();
   return 0;		}
+
+#endif // Test_Executive
