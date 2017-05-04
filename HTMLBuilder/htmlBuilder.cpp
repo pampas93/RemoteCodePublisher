@@ -25,6 +25,7 @@ std::string htmlClass::htmlMainClass(DependencyTable dp, std::string dirPath, st
 
 		addFilesToDir();
 		indexFile = indexPage();
+		buildDepFileNamesOnlyMap();
 
 	}
 	catch (const std::exception& e)
@@ -114,7 +115,7 @@ void htmlClass::createHTMLfile(Path htmlPath, Path sourcePath)
 {
 	try {
 		std::string openHtmlTags;
-		openHtmlTags = "<html>\n<head>\n<link rel = \"stylesheet\"type = \"text/css\"href = \"../CodePublishHTML/myStyle.css\" /></head>\n<body class = \"indent\">\n<script type=\"text/javascript\" src=\"../CodePublishHTML/jquery-2.2.4.js\"></script>\n<script type=\"text/javascript\" src=\"../CodePublishHTML/myJS.js\"></script>";
+		openHtmlTags = "<html>\n<head>\n<link rel = \"stylesheet\"type = \"text/css\"href = \"myStyle.css\" /></head>\n<body class = \"indent\">\n<script type=\"text/javascript\" src=\"jquery-2.2.4.js\"></script>\n<script type=\"text/javascript\" src=\"myJS.js\"></script>";
 		std::string closeHtmlTags;
 		closeHtmlTags = "\n</body>\n</html>";
 
@@ -150,7 +151,7 @@ std::string htmlClass::returnDependencyHRef(Path sourcePath)
 	for (File child : depList.dependencies.getValue())
 	{
 		std::string filename = FileSystem::Path::getName(child);
-		std::string link = directoryPath + "/" +filename+ ".html";
+		std::string link = filename+ ".html";
 		htmlDepTags.append("<li> <a href=");
 		htmlDepTags.append("\""+link + "\">");
 		htmlDepTags.append(filename + "</a> </li>");
@@ -175,7 +176,7 @@ std::string htmlClass::htmlPrologues(std::string fn)
 //<---------------------- Function to create index page ------------------->
 std::string htmlClass::indexPage()
 {
-	std::string openHtmlTags = "<html>\n<head>\n<link rel = \"stylesheet\"type = \"text/css\"href = \"../CodePublishHTML/myStyle.css\" /></head>\n<body class = \"indent\">\n<script type=\"text/javascript\" src=\"../CodePublishHTML/jquery-2.2.4.js\"></script>\n<script type=\"text/javascript\" src=\"../CodePublishHTML/myJS.js\"></script>";
+	std::string openHtmlTags = "<html>\n<head>\n<link rel = \"stylesheet\"type = \"text/css\"href = \"myStyle.css\" /></head>\n<body class = \"indent\">\n<script type=\"text/javascript\" src=\"jquery-2.2.4.js\"></script>\n<script type=\"text/javascript\" src=\"myJS.js\"></script>";
 	std::string closeHtmlTags = "\n</body>\n</html>";
 	std::string prologue;
 	prologue = "<!----------------------------------------------------------------------------\n IndexPage.html -  Index page for webPages published for Project #3\n Published 4 Apr 2017\n Abhijit Srikanth, CSE687 - Object Oriented Design, Spring 2017\n";
@@ -230,6 +231,29 @@ bool htmlClass::isCloseBracePresent(std::string f)
 			return true;
 	}
 	return false;
+}
+
+std::unordered_map<std::string, std::vector<std::string>>& htmlClass::getdepForLazyDownload()
+{
+	return depFileNamesOnly;
+}
+
+//--------------- Builds and returns a map of dependency of html files ----
+void htmlClass::buildDepFileNamesOnlyMap()				//For RemoteCodePublisher Lazy download only. Simply adding .html for later ease
+{
+	for (Item item : file2Path)
+	{
+		std::string sourcePath = item.second;
+		std::string sourceName = FileSystem::Path::getName(sourcePath) + ".html";
+		std::vector<std::string> tempdep;
+		NoSQLDB::Element<std::string> depList = dp_Store.value(sourcePath);
+		for (File child : depList.dependencies.getValue())
+		{
+			std::string filename = FileSystem::Path::getName(child) + ".html";
+			tempdep.push_back(filename);
+		}
+		depFileNamesOnly[sourceName] = tempdep;
+	}
 }
 
 //<---------------------- htmlClass destructor ------------------->

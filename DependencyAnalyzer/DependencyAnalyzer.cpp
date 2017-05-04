@@ -115,6 +115,7 @@ bool DependencyTable::TokensInFile(File eachFile)
 			//std::cout << "\n -- " << tok;
 			storeIntoDep(tok, eachFile);
 		} while (in.good());
+		in.close();
 	}
 	catch (std::logic_error& ex)
 	{

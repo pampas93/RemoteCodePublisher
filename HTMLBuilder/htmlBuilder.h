@@ -80,10 +80,13 @@ public:
 	std::string indexPage();
 	bool isOpenBracePresent(std::string f);
 	bool isCloseBracePresent(std::string f);
+	std::unordered_map<std::string, std::vector<std::string>>& getdepForLazyDownload();
+	void buildDepFileNamesOnlyMap();
 	~htmlClass();
 
 
 private:
+	std::unordered_map<std::string, std::vector<std::string>> depFileNamesOnly;
 	std::string directoryPath;
 	NoSQLDB::NoSqlDb<std::string> dp_Store;
 	std::unordered_map<std::string, std::string> file2Path;

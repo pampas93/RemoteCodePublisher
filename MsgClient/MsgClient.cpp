@@ -36,10 +36,9 @@
 //
 
 #include "MsgClient.h"
+#include <shellapi.h>
+#pragma comment(lib,"shell32.lib") 
 size_t ClientCounter::clientCount = 0;
-
-bool analyzeMessageFromServer(HttpMessage m);
-HttpMessage listenerFunction();
 
 
 //----< factory for creating messages >------------------------------
@@ -90,7 +89,7 @@ void MsgClient::sendMessage(HttpMessage& msg, Socket& socket)
 //--------------------Sending file to server -----------------------
 bool MsgClient::sendFile(const std::string& filenameAbs, Socket& socket, std::string category)
 {
-	std::string fqname = "../TestFiles/"+filenameAbs;				//Neeeeeeed to change. only for testing
+	std::string fqname = filenameAbs;
 	FileSystem::FileInfo fi(fqname);
 	size_t fileSize = fi.size();
 	std::string sizeString = Converter<size_t>::toString(fileSize);
@@ -147,6 +146,10 @@ void MsgClient::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 			msg = makeMessage(1, type +" message", "localhost:8080", category, type);
 			sendMessage(msg, si);
 		}
+		else if (type == "downloadlazy") {
+			msg = makeMessage(1, lazyFile, "localhost:8080", category, type);
+			sendMessage(msg, si);
+		}
 
 		/*Show::write("\n");
 		Show::write("\n  All done folks");*/
@@ -159,25 +162,38 @@ void MsgClient::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 	}
 }
 
+
 //--------------------Send each file to server --------------
 void MsgClient::sendFiles2Server(Socket & socket, std::string category)
 {
-	std::vector<std::string> files = FileSystem::Directory::getFiles("../TestFiles", "*.cpp");
-	for (size_t i = 0; i < files.size(); ++i)
+	std::vector<std::string> filestoSend = split(filesFromGUI, ',');
+//	std::vector<std::string> files = FileSystem::Directory::getFiles("../TestFiles", "*.cpp");
+	for (size_t i = 0; i < filestoSend.size(); ++i)
 	{
-		Show::write("\n\n  sending file " + files[i]);
-		sendFile(files[i], socket, category);
+		Show::write("\n\n  sending file " + filestoSend[i]);
+		sendFile(filestoSend[i], socket, category);
 	}
-	std::vector<std::string> filesx = FileSystem::Directory::getFiles("../TestFiles", "*.h");
-	for (size_t i = 0; i < filesx.size(); ++i)
+	//std::vector<std::string> filesx = FileSystem::Directory::getFiles("../TestFiles", "*.h");
+	/*for (size_t i = 0; i < filestoSend.size(); ++i)
 	{
-		Show::write("\n\n  sending file " + filesx[i]);
-		sendFile(filesx[i], socket, category);
-	}
+		Show::write("\n\n  sending file " + filestoSend[i]);
+		sendFile(filestoSend[i], socket, category);
+	}*/
 
 	HttpMessage m;															//Message sent to tell server upload is over
 	m = makeMessage(1, "upload over", "localhost:8080", category, "upload");
 	sendMessage(m, socket);
+}
+
+std::vector<std::string> MsgClient::split(const std::string &s, char delim) {
+	std::stringstream ss;
+	ss.str(s);
+	std::string item;
+	std::vector<std::string> elems;
+	while (std::getline(ss, item, delim)) {
+		elems.push_back(item);
+	}
+	return elems;
 }
 
 
@@ -189,7 +205,6 @@ HttpMessage ServerHandler::readMessage(Socket& socket)
 {
 	connectionClosed_ = false;
 	HttpMessage msg;
-
 	while (true)
 	{
 		std::string attribString = socket.recvString('\n');
@@ -220,7 +235,6 @@ HttpMessage ServerHandler::readMessage(Socket& socket)
 				return msg;
 			readFile(filename, contentSize, socket, category);
 		}
-
 		if (filename != "")
 		{
 			msg.removeAttribute("content-length");
@@ -257,7 +271,7 @@ HttpMessage ServerHandler::readMessage(Socket& socket)
 
 bool ServerHandler::readFile(const std::string& filename, size_t fileSize, Socket& socket, std::string category)
 {
-	std::string fqname = "DownloadFiles/"+ category + "/" +filename ;
+	std::string fqname = "../MsgClient/DownloadFiles/"+ category + "/" +filename ;
 	FileSystem::File file(fqname);
 	file.open(FileSystem::File::out, FileSystem::File::binary);
 	if (!file.isGood())
@@ -330,7 +344,7 @@ HttpMessage MsgClient::listenerFunction()
 				break;
 			}
 		}
-		//return HttpMessage();
+		return HttpMessage();
 	}
 	//return HttpMessage();
 	catch (std::exception& exc)
@@ -339,6 +353,7 @@ HttpMessage MsgClient::listenerFunction()
 		std::string exMsg = "\n  " + std::string(exc.what()) + "\n\n";
 		Show::write(exMsg);
 	}
+	return HttpMessage();
 }
 
 //-----------Returns false if msg is the last message from server. If more responses are yet to come, returns true ------
@@ -350,8 +365,6 @@ bool MsgClient::analyzeMessageFromServer(HttpMessage m)
 
 	if (message_body.find("Download over") != std::string::npos)		//end of Download option, server sends a message with body "upload over"
 		return false;
-	//if (filename != "")		//If message is a received file
-	//	return true;
 	if (type == "display" || type == "delete" || type == "publish" || type == "upload")
 		return false;
 
@@ -380,12 +393,13 @@ std::string MsgClient::getCategory(int c) {
 }
 
 
-std::string MsgClient::uploadFunction(std::string path, std::vector<std::string> files, int cat)
+std::string MsgClient::uploadFunction(int cat, std::string files)
 {
-	filestoOpen = files;
+	//filestoOpen = files;
+	filesFromGUI = files;
 	std::string category = getCategory(cat);
 	std::thread t1(
-		[&]() { execute(200, 1, "upload", category, path); } 
+		[&]() { execute(200, 1, "upload", category, files); }	/////////Not Dooooooooooooone
 	);
 	t1.join();
 
@@ -431,15 +445,15 @@ std::string MsgClient::displayFunction(int cat)
 
 	HttpMessage x = listenerFunction();
 	std::cout << "\n\nList of Files in category\n\n" << x.bodyString();
-	return x.bodyString();
+	return x.bodyString();;
 
 }
 
-std::string MsgClient::downloadFunction(int cat, std::vector<std::string> filesToOpen)
+std::string MsgClient::downloadFunction(int cat, std::string filesToOpen)
 {
 	std::string category = getCategory(cat);
 	std::thread t1(
-		[&]() { execute(300, 1, "download", category); } // 20 messages 100 millisec apart
+		[&]() { execute(300, 1, "download", category); } 
 	);
 	t1.join();
 
@@ -448,11 +462,36 @@ std::string MsgClient::downloadFunction(int cat, std::vector<std::string> filesT
 	return x.bodyString();
 }
 
+std::string MsgClient::downloadLazyFunction(int cat, std::string file)
+{
+	lazyFile = file;
+	std::string category = getCategory(cat);
+	std::thread t1(
+		[&]() { execute(300, 1, "downloadlazy", category); } 
+	);
+	t1.join();
+
+	HttpMessage x = listenerFunction();
+	std::cout << "\n\n" << x.bodyString();
+	openBrowser("../MsgClient/DownloadFiles/" + category + "/" + file);
+	return x.bodyString();
+}
+
+void MsgClient::openBrowser(std::string fpath)
+{
+	std::string f = "file:///" + FileSystem::Path::getFullFileSpec(fpath);
+	std::wstring ff = std::wstring(f.begin(), f.end());
+	LPCWSTR lpcff = ff.c_str();
+	LPCWSTR a = L"open";
+	LPCWSTR browser = L"chrome.exe";
+	ShellExecute(NULL, a, browser, lpcff, NULL, SW_SHOWDEFAULT);
+
+}
 
 
 
 
-
+#ifdef TEST_CLIENTONE
 
 int main()
 {
@@ -463,60 +502,21 @@ int main()
 	MsgClient c;
 	//c.deleteFunction(2);
 	
-	c.uploadFunction("../TestFiles", c.filestoSend, 2);
-	c.publishFunction(2);
-	c.downloadFunction(2);
-	c.displayFunction(2);
-	c.deleteFunction(2);
-	/*c.deleteFunction(2);
-	c.displayFunction(2);*/
-	/*c.uploadFunction("../TestFiles", c.filestoSend,1);
-	c.uploadFunction("../TestFiles", c.filestoSend,2);
-	c.displayFunction(2);
-	c.deleteFunction(1);
-	c.displayFunction(2);*/
-
+	//c.uploadFunction("../TestFiles",1);
+	c.publishFunction(1);
+	//c.displayFunction(1);
+	c.downloadLazyFunction(1, "XmlElement.h.html");
+	     
 	while (true) {
 
 		//MsgClient c1;
 
 		//std::cout << "\nClient is connected to Server";
-		//std::cout << "\nEnter a Message\n";
-
-		//std::string path, category, type;
-		//std::cin >> type;
-		//std::cin >> category;
-		//std::cin >> path;
-		//std::thread t1(
-		//	[&]() { c1.execute(300, 1, type, category, path ); } // 20 messages 100 millisec apart
-		//);
-		//t1.join();
-
-		//Async::BlockingQueue<HttpMessage> msgQ;
-		//try
-		//{
-		//	SocketSystem ss;
-		//	SocketListener sl(8082, Socket::IP6);
-		//	ServerHandler cp(msgQ);
-		//	sl.start(cp);
-
-		//	while (true)
-		//	{
-		//		HttpMessage msg = msgQ.deQ();
-		//		std::cout << msg.bodyString();
-		//		//Show::write("\n\n  Client Received message with body contents:\n" + msg.bodyString());
-		//		break;
-		//	}
-		//}
-		//catch (std::exception& exc)
-		//{
-		//	Show::write("\n  Exeception caught: ");
-		//	std::string exMsg = "\n  " + std::string(exc.what()) + "\n\n";
-		//	Show::write(exMsg);
-		//}
-
+	
 	}
 
 	getchar();
 }
+
+#endif
 

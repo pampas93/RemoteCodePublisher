@@ -138,7 +138,7 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
  */
 bool ClientHandler::readFile(const std::string& filename, size_t fileSize, Socket& socket,std::string category)
 {
-  std::string fqname = "ServerFiles/SourceFiles/" +category+"/"+ filename;	//Mention category also here
+  std::string fqname = "../MsgServer/ServerFiles/SourceFiles/" +category+"/"+ filename;	
   FileSystem::File file(fqname);
   file.open(FileSystem::File::out, FileSystem::File::binary);
   if (!file.isGood())
@@ -234,7 +234,7 @@ bool MsgServer::sendFile(const std::string& filename, Socket& socket, std::strin
 {
 	// assumes that socket is connected
 
-	std::string fqname = "ServerFiles/PublishedFiles/" +category+ "/"+filename;
+	std::string fqname = "../MsgServer/ServerFiles/PublishedFiles/" +category+ "/"+filename;
 	FileSystem::FileInfo fi(fqname);
 	size_t fileSize = fi.size();
 	std::string sizeString = Converter<size_t>::toString(fileSize);
@@ -304,6 +304,11 @@ void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 			sendMessage(msg, si);
 			sendFiles2Client(si, category, cPort);
 		}
+		else if (type == "downloadlazy") {
+			msg = makeMessage(1, "Lazy Downloading into client", cPort, category, type);
+			sendMessage(msg, si);
+			sendLazyFiles2Client(si, category, cPort);
+		}
 		
 	}
 	catch (std::exception& exc)
@@ -314,22 +319,28 @@ void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 	}
 }
 
+void MsgServer::setLazyVector(std::vector<std::string> x)
+{
+	filesForLazyD_MS = x;
+}
+
 
 std::string MsgServer::getAllhtmlFiles(std::string category)
 {
 	std::string allFiles;
-	std::vector<std::string> files = FileSystem::Directory::getFiles("ServerFiles/PublishedFiles/" + category + "/", "*.*");
+	allFiles = "Display Successful,";
+	std::vector<std::string> files = FileSystem::Directory::getFiles("../MsgServer/ServerFiles/PublishedFiles/" + category + "/", "*.html");
 	for (size_t i = 0; i < files.size(); ++i)
 	{
 		allFiles.append(files[i]);
-		allFiles.append("\n");
+		allFiles.append(",");
 	}
 	return allFiles;
 }
 
 void MsgServer::sendFiles2Client(Socket & socket, std::string category, std::string cPort)
 {
-	std::vector<std::string> files = FileSystem::Directory::getFiles("ServerFiles/PublishedFiles/"+category+"/","*.*");
+	std::vector<std::string> files = FileSystem::Directory::getFiles("../MsgServer/ServerFiles/PublishedFiles/"+category+"/","*.*");
 	for (size_t i = 0; i < files.size(); ++i)
 	{
 		Show::write("\n\n  Downloading file " + files[i]);
@@ -339,10 +350,26 @@ void MsgServer::sendFiles2Client(Socket & socket, std::string category, std::str
 	HttpMessage m;															//Message sent to tell server upload is over
 	m = makeMessage(1, "Download over", cPort, category, "upload");
 	sendMessage(m, socket);
-
 }
 
+void MsgServer::sendLazyFiles2Client(Socket & socket, std::string category, std::string cPort)
+{
+	//std::vector<std::string> files = FileSystem::Directory::getFiles("ServerFiles/PublishedFiles/" + category + "/", "*.*");
+	for (size_t i = 0; i < filesForLazyD_MS.size(); ++i)
+	{
+		Show::write("\n\n  Downloading file " + filesForLazyD_MS[i]);
+		sendFile(filesForLazyD_MS[i], socket, category, cPort);
+	}
+	Show::write("\n\n  Downloading JS ");
+	sendFile("jquery-2.2.4.js", socket, category, cPort);
+	sendFile("myJS.js", socket, category, cPort);
+	Show::write("\n\n  Downloading CSS ");
+	sendFile("myStyle.css", socket, category, cPort);
 
+	HttpMessage m;															//Message sent to tell server upload is over
+	m = makeMessage(1, "Download over", cPort, category, "upload");
+	sendMessage(m, socket);
+}
 
 
 //------------------- Analyse received message functions below --------
@@ -366,59 +393,63 @@ void ClientHandler::analyseMsgContent(HttpMessage msg)
 	size_t fromPort = findFromPort(msg);
 
 	MsgServer c1;
-
-//	Call each Upload or delete or other type functions inside this; and call execute inside that function
 	if (type == "upload" ) {
-		//Done!
 		if (body.find("upload over") != std::string::npos) {
 			std::thread t1(	[&]() { c1.execute(100, 1, fromPort, type, category); } );
 			t1.join();
 		}
 		return;
-		//need to send message now, saying successful
-		//&& (body.find("upload over") != std::string::npos inside that function
 	}
 	else if (type == "delete" ) {
-
 		deleteCategory(category);
 		std::thread t1(	[&]() { c1.execute(100, 1, fromPort, type, category); } );
 		t1.join();
-		
+		return;
 	}
 	else if (type == "display") {
-
 		std::thread t1([&]() { c1.execute(100, 1, fromPort, type, category); });
 		t1.join();
-
+		return;
 	}
 	else if (type == "publish") {
 		publishCategory(category);
 		std::thread t1(	[&]() { c1.execute(100, 1, fromPort, type, category); } );
 		t1.join();
-		//need to send message now, saying successful
-
+		return;
 	}
 	else if (type == "download") {
-		//downloadCategory(category);
 		std::thread t1([&]() { c1.execute(100, 1, fromPort, type, category); });
 		t1.join();
-		//need to send message now, saying successful
+		return;
+	}
+	else if (type == "downloadlazy") {
+		filesForLazyD_CH.clear();
+		if (category == "category1")
+			LazyDownloadRecursive(body, depMapCategory1);
+		else if (category == "category2")
+			LazyDownloadRecursive(body, depMapCategory2);
+		else if (category == "category3")
+			LazyDownloadRecursive(body, depMapCategory3);
 
+		c1.setLazyVector(filesForLazyD_CH);
+		std::thread t1([&]() { c1.execute(100, 1, fromPort, type, category); });
+		t1.join();
+		return;
 	}
 }
 
 bool ClientHandler::deleteCategory(std::string category)
 {
-	std::vector<std::string> files = FileSystem::Directory::getFiles("ServerFiles/SourceFiles/"+category+"/", "*.*");
+	std::vector<std::string> files = FileSystem::Directory::getFiles("../MsgServer/ServerFiles/SourceFiles/"+category+"/", "*.*");
 	for (size_t i = 0; i < files.size(); ++i)
 	{
-		std::string fileFullPath = "ServerFiles/SourceFiles/" + category + "/" + files[i];
+		std::string fileFullPath = "../MsgServer/ServerFiles/SourceFiles/" + category + "/" + files[i];
 		std::remove(fileFullPath.c_str());
 	}
-	std::vector<std::string> htmlfiles = FileSystem::Directory::getFiles("ServerFiles/PublishedFiles/" + category + "/", "*.html");
+	std::vector<std::string> htmlfiles = FileSystem::Directory::getFiles("../MsgServer/ServerFiles/PublishedFiles/" + category + "/", "*.html");
 	for (size_t i = 0; i < htmlfiles.size(); ++i)
 	{
-		std::string fileFullPath = "ServerFiles/PublishedFiles/" + category + "/" + htmlfiles[i];
+		std::string fileFullPath = "../MsgServer/ServerFiles/PublishedFiles/" + category + "/" + htmlfiles[i];
 		std::remove(fileFullPath.c_str());
 	}
 	return true;
@@ -427,7 +458,7 @@ bool ClientHandler::deleteCategory(std::string category)
 bool ClientHandler::publishCategory(std::string category)
 {
 	char * array[7];
-	std::string path = "ServerFiles/SourceFiles/" + category + "/";
+	std::string path = "../MsgServer/ServerFiles/SourceFiles/" + category + "/";
 	std::string x[] = { "simbly",path,"*.h","*.cpp","/m","/f","/r" };
 	for (int i = 0; i < 7; i++) {
 		const char* xx = x[i].c_str();
@@ -436,10 +467,47 @@ bool ClientHandler::publishCategory(std::string category)
 
 	CodeAnalysis::CodeAnalysisExecutive exexec;
 	exexec.ProcessCommandLine(7, array);
+	if (category == "category1")
+		depMapCategory1 = exexec.Dependency4RemoteCodePublisher(category);
+	else if(category == "category2")
+		depMapCategory2 = exexec.Dependency4RemoteCodePublisher(category);
+	else if(category == "category3")
+		depMapCategory3 = exexec.Dependency4RemoteCodePublisher(category);
 
-	exexec.Dependency4RemoteCodePublisher(category);
 	return true;
 }
+
+//-------- For Lazy Download. file initially the selected file; mapUsed is the category based map; Recursive Function --------
+void ClientHandler::LazyDownloadRecursive(std::string file, lazyMap mapUsed)
+{
+	if (std::find(filesForLazyD_CH.begin(), filesForLazyD_CH.end(), file) == filesForLazyD_CH.end())
+	{
+		filesForLazyD_CH.push_back(file);
+	}
+	std::vector<std::string> temp = mapUsed[file];
+	for (std::string x : temp)
+	{
+		if (std::find(filesForLazyD_CH.begin(), filesForLazyD_CH.end(), x) == filesForLazyD_CH.end())
+		{
+			stackForLazy.push(x);
+		}
+	}
+	if (stackForLazy.empty()) {
+		return;
+	}
+	else
+	{
+		std::string x = stackForLazy.top();
+		stackForLazy.pop();
+		LazyDownloadRecursive(x, mapUsed);
+	}
+}
+
+std::vector<std::string> ClientHandler::returnLazyVector()
+{
+	return filesForLazyD_CH;
+}
+
 
 
 
@@ -461,7 +529,7 @@ int main()
 	CodeAnalysis::CodeAnalysisExecutive x;
 	
 	Async::BlockingQueue<HttpMessage> msgQ;
-	MsgServer c1;
+	//MsgServer c1;
 
 	try
 	{
@@ -489,20 +557,10 @@ int main()
 	}
 	catch (std::exception& exc)
 	{
-		/*Show::write("\n  Exeception caught: ");
+		//Show::write("\n  Exeception caught: ");
 		std::string exMsg = "\n  " + std::string(exc.what()) + "\n\n";
-		Show::write(exMsg);*/
+		//Show::write(exMsg);
+		std::cout << exMsg;
 	}
-
-
-	//MsgServer c1;
-	//std::thread t1(
-	//	[&]() { c1.execute(1000, 5); } // 20 messages 100 millisec apart
-	//);
-
-	//t1.join();
-
-
-	//getchar();
 
 }

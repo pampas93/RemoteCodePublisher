@@ -967,7 +967,7 @@ std::string CodeAnalysisExecutive::systemTime()
 //------------------ For Remote Dependency -------------------------//
 
 
-void CodeAnalysis::CodeAnalysisExecutive::Dependency4RemoteCodePublisher(std::string category)
+std::unordered_map<std::string, std::vector<std::string>> CodeAnalysis::CodeAnalysisExecutive::Dependency4RemoteCodePublisher(std::string category)
 {
 	setDisplayModes();
 	startLogger(std::cout);
@@ -993,7 +993,9 @@ void CodeAnalysis::CodeAnalysisExecutive::Dependency4RemoteCodePublisher(std::st
 	htmlClass hClass;
 	std::string direc2publish = getPathDir() + category + "/";
 	std::string toOpen = hClass.htmlMainClass(dp, direc2publish, tb.returnLineMap());
-	openBrowser(toOpen);
+	//openBrowser(toOpen);
+	std::unordered_map<std::string, std::vector<std::string>> temp = hClass.getdepForLazyDownload();
+	return (temp);
 }
 
 

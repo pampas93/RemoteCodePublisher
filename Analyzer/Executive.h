@@ -145,7 +145,7 @@ namespace CodeAnalysis
     CodeAnalysisExecutive(const CodeAnalysisExecutive&) = delete;
     CodeAnalysisExecutive& operator=(const CodeAnalysisExecutive&) = delete;
 
-	void Dependency4RemoteCodePublisher(std::string category);
+	std::unordered_map<std::string, std::vector<std::string>> Dependency4RemoteCodePublisher(std::string category);
     void showCommandLineArguments(int argc, char* argv[]);
     bool ProcessCommandLine(int argc, char* argv[]);
     FileMap& getFileMap();

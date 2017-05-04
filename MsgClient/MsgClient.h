@@ -11,6 +11,7 @@
 #include <iostream>
 #include <thread>
 
+
 using Show = Logging::StaticLogger<1>;
 using namespace Utilities;
 using Utils = StringHelper;
@@ -35,28 +36,26 @@ public:
 	using EndPoint = std::string;
 	void execute(const size_t TimeBetweenMessages, const size_t NumMessages, std::string type, std::string category, std::string path = "none");
 	//std::vector<std::string> getAllFiles(std::string path);
-	std::string uploadFunction(std::string path, std::vector<std::string> files, int cat);
+	std::string uploadFunction(int cat, std::string files);
 	std::string deleteFunction(int cat);
 	std::string publishFunction(int cat);
 	std::string displayFunction(int cat);
-	std::string downloadFunction(int cat, std::vector<std::string> filesToOpen = {""});
+	std::string downloadFunction(int cat, std::string filesToOpen);
+	std::string downloadLazyFunction(int cat, std::string file);
 
 	HttpMessage listenerFunction();
 	bool analyzeMessageFromServer(HttpMessage m);
 	std::string getCategory(int c);
 
+	void openBrowser(std::string fpath);
 	void sendFiles2Server(Socket& socket, std::string category);
+	std::vector<std::string> split(const std::string &s, char delim);
 
-	//void uploadMessage(std::string path, std::string category);
-	//void deleteMessage(std::string category);
-	//void publishMessage(std::string category);
-	//void displayMessage(std::string category);
-	//void downloadMessage(std::string category);
-	std::vector<std::string> filestoSend;
-private:
 	
+private:
+	std::string filesFromGUI;
 	std::vector<std::string> filestoOpen;
-
+	std::string lazyFile;
 	HttpMessage makeMessage(size_t n, const std::string& msgBody, const EndPoint& ep, std::string category, std::string type);
 	void sendMessage(HttpMessage& msg, Socket& socket);
 	bool sendFile(const std::string& filenameAbs, Socket& socket, std::string category);

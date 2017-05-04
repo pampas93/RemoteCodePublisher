@@ -8,12 +8,14 @@
 #include "../Logger/Logger.h"
 #include "../Utilities/Utilities.h"
 #include "../Analyzer/Executive.h"
+#include <stack> 
 #include <string>
 #include <stdio.h>
 #include <iostream>
 
 using Show = Logging::StaticLogger<1>;
 using namespace Utilities;
+using lazyMap = std::unordered_map<std::string, std::vector<std::string>>;
 
 class ClientHandler
 {
@@ -23,17 +25,39 @@ public:
 
 	int findFromPort(HttpMessage msg);
 	void analyseMsgContent(HttpMessage msg);
-
 	bool deleteCategory(std::string category);
 	bool publishCategory(std::string category);
+	void LazyDownloadRecursive(std::string file, lazyMap mapUsed);
+	std::vector<std::string> returnLazyVector();
 
 private:
+	lazyMap depMapCategory1;
+	lazyMap depMapCategory2;
+	lazyMap depMapCategory3;
+	std::vector<std::string> filesForLazyD_CH;
+	std::stack<std::string> stackForLazy;
 	bool connectionClosed_;
 	HttpMessage readMessage(Socket& socket);
 	bool readFile(const std::string& filename, size_t fileSize, Socket& socket, std::string category);
 	Async::BlockingQueue<HttpMessage>& msgQ_;
 };
 
+
+class MsgServer
+{
+public:
+	using EndPoint = std::string;
+	std::string getAllhtmlFiles(std::string category);
+	void sendFiles2Client(Socket& socket, std::string category, std::string cPort);
+	void sendLazyFiles2Client(Socket& socket, std::string category, std::string cPort);
+	void execute(const size_t TimeBetweenMessages, const size_t NumMessages, int toPort, std::string type, std::string category);
+	void setLazyVector(std::vector<std::string> x);
+private:
+	std::vector<std::string> filesForLazyD_MS;
+	HttpMessage makeMessage(size_t n, const std::string& msgBody, const EndPoint& ep, std::string category, std::string type);
+	void sendMessage(HttpMessage& msg, Socket& socket);
+	bool sendFile(const std::string& fqname, Socket& socket, std::string category, std::string cPort);
+};
 
 class ServerCounter
 {
@@ -44,22 +68,3 @@ private:
 	static size_t servCount;
 };
 size_t ServerCounter::servCount = 0;
-
-
-/////////////////////////////////////////////////////////////////////
-// MsgClient class
-// - was created as a class so more than one instance could be 
-//   run on child thread
-//
-class MsgServer
-{
-public:
-	using EndPoint = std::string;
-	std::string getAllhtmlFiles(std::string category);
-	void sendFiles2Client(Socket& socket, std::string category, std::string cPort);
-	void execute(const size_t TimeBetweenMessages, const size_t NumMessages, int toPort, std::string type, std::string category);
-private:
-	HttpMessage makeMessage(size_t n, const std::string& msgBody, const EndPoint& ep, std::string category, std::string type);
-	void sendMessage(HttpMessage& msg, Socket& socket);
-	bool sendFile(const std::string& fqname, Socket& socket, std::string category, std::string cPort);
-};
