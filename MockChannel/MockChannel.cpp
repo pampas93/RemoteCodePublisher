@@ -69,6 +69,7 @@ public:
   void start();
   void stop();
   std::vector<std::string> split(const std::string &s, char delim);
+  std::string retrieveMessage(std::string msg, std::string res);
 private:
   std::thread thread_;
   ISendr* pISendr_;
@@ -83,79 +84,86 @@ MockChannel::MockChannel(ISendr* pSendr, IRecvr* pRecvr) : pISendr_(pSendr), pIR
 
 //----< creates thread to read from sendQ and echo back to the recvQ >-------
 
-void MockChannel::start()
-{
+void MockChannel::start() {
   std::cout << "\n  MockChannel starting up";
   thread_ = std::thread(
     [this] {
     Sendr* pSendr = dynamic_cast<Sendr*>(pISendr_);
     Recvr* pRecvr = dynamic_cast<Recvr*>(pIRecvr_);
-    if (pSendr == nullptr || pRecvr == nullptr)
-    {
+    if (pSendr == nullptr || pRecvr == nullptr) {
       std::cout << "\n  failed to start Mock Channel\n\n";
-      return;
-    }
+      return; }
     BQueue& sendQ = pSendr->queue();
     BQueue& recvQ = pRecvr->queue();
+	c.testExecutive();
     while (!stop_)
     {
       std::cout << "\n  channel deQing message";
       Message msg = sendQ.deQ();  
 	  std::cout << "\n  channel got message: " << msg;
 	  Message res;
-	  std::vector<std::string> m = split(msg, ',');
-	  if (m[0] == "PUBLISH") {
-		  res = c.publishFunction(std::stoi(m[1]));
-		  res = "PUBLISH," + res;
-	  }
-	  else if (m[0] == "DELETE") {
-		  res = c.deleteFunction(std::stoi(m[1]));
-		  res = "DELETE," + res;
-	  }
-	  else if (m[0] == "DISPLAY") {
-		  res = c.displayFunction(std::stoi(m[1]));
-		  res = "DISPLAY," + res;
-	  }
-	  else if (m[0] == "UPLOAD") {
-		  std::string files;
-		  int actualsize = m.size() - 1;
-		  for (int i = 2; i < actualsize; i++) {
-			  files += m[i] + ",";
-		  }
-		  files.pop_back();
-		  res = c.uploadFunction(std::stoi(m[1]),files);
-		  std::cout << "\n   got response: " << res;
-		  res = "UPLOAD," + res;
-		  std::cout << "\n   sent response: " << res;
-	  }
-	  else if (m[0] == "DOWNLOAD") {
-		  if (m[2] != "ALL") {
-			  std::string files;
-			  int actualsize = m.size() - 1;
-			  for (int i = 2; i < actualsize; i++) {
-				  files += m[i] + ",";
-			  }
-			  files.pop_back();
-			  res = c.downloadLazyFunction(std::stoi(m[1]), files);
-		  }
-		  else {
-			  res = c.downloadFunction(std::stoi(m[1]), std::string("ALL"));
-		  }
-		  
-		  std::cout << "\n   got response: " << res;
-		  res = "DOWNLOAD," + res;
-		  
-	  }
-	  std::cout << "\n   got response: " << res;
 
-      std::cout << "\n  channel enQing message";
-	  std::cout << "\n   sent response: " << res;
+	  res = retrieveMessage(msg, res);
+
+
+
+	  //Message res = retrieveMessage(msg);
+	  
+	  //std::cout << "\n   got response: " << res;   
+	  std::cout << "\n  channel enQing message";  
+	  //std::cout << "\n   sent response: " << res;
       recvQ.enQ(res);
     }
     std::cout << "\n  Server stopping\n\n";
   });
 }
 
+//-------------- Retrive option from GUI ---------
+std::string MockChannel::retrieveMessage(std::string msg, std::string res)
+{
+	
+	std::vector<std::string> m = split(msg, ',');
+	if (m[0] == "PUBLISH") {
+		res = c.publishFunction(std::stoi(m[1]));
+		res = "PUBLISH," + res;
+	}
+	else if (m[0] == "DELETE") {
+		res = c.deleteFunction(std::stoi(m[1]));
+		res = "DELETE," + res;
+	}
+	else if (m[0] == "DISPLAY") {
+		res = c.displayFunction(std::stoi(m[1]));
+		res = "DISPLAY," + res;
+	}
+	else if (m[0] == "UPLOAD") {
+		std::string files;
+		int actualsize = m.size() - 1;
+		for (int i = 2; i < actualsize; i++)
+			files += m[i] + ",";
+		files.pop_back();
+		res = c.uploadFunction(std::stoi(m[1]), files);
+		std::cout << "\n   got response: " << res;
+		res = "UPLOAD," + res;
+		std::cout << "\n   sent response: " << res;
+	}
+	else if (m[0] == "DOWNLOAD") {
+		if (m[2] != "ALL") {
+			std::string files;
+			int actualsize = m.size() - 1;
+			for (int i = 2; i < actualsize; i++)
+				files += m[i] + ",";
+			files.pop_back();
+			res = c.downloadLazyFunction(std::stoi(m[1]), files);
+		}
+		else
+			res = c.downloadFunction(std::stoi(m[1]), std::string("ALL"));
+		std::cout << "\n   got response: " << res;
+		res = "DOWNLOAD," + res;
+	}
+	return res;
+}
+
+// ---------- Delimiter function 
 std::vector<std::string> MockChannel::split(const std::string &s, char delim) {
 	std::stringstream ss;
 	ss.str(s);

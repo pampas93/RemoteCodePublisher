@@ -1,0 +1,1 @@
+devenv RemoteCodePublisher_OOD.sln /rebuild debug

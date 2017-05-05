@@ -1,17 +1,18 @@
-/////////////////////////////////////////////////////////////////////////
-// MsgClient.cpp - Demonstrates simple one-way HTTP messaging          //
-//                                                                     //
-// Jim Fawcett, CSE687 - Object Oriented Design, Spring 2016           //
-// Application: OOD Project #4                                         //
-// Platform:    Visual Studio 2015, Dell XPS 8900, Windows 10 pro      //
-/////////////////////////////////////////////////////////////////////////
-/*
-* This package implements a client that sends HTTP style messages and
-* files to a server that simply displays messages and stores files.
-*
-* It's purpose is to provide a very simple illustration of how to use
-* the Socket Package provided for Project #4.
-*/
+#pragma warning(disable: 4221)
+/////////////////////////////////////////////////////////////////////
+//  HtmlBuilder.cpp - Webpage CodePublisher					       //
+//																   //
+//  Language:      Visual C++ 2015                                 //
+//  Platform:      Dell Inspiron, Windows 8.1			           //
+//  Application:   Dependency Analysis - CIS 687 Project 4         //
+//  Author:        Abhijit Srikanth SUID:864888072			       //
+//////////////////////////////////////////////////////////////////////*
+//* This package implements a client that sends HTTP style messages and
+//* files to a server that simply displays messages and stores files.
+//*
+//* It's purpose is to provide a very simple illustration of how to use
+//* the Socket Package provided for Project #4.
+//*/
 /*
 * Required Files:
 *   MsgClient.cpp, MsgServer.cpp
@@ -22,18 +23,7 @@
 *   Logger.h, Logger.cpp
 *   Utilities.h, Utilities.cpp
 */
-/*
-* ToDo:
-* - pull the sending parts into a new Sender class
-* - You should create a Sender like this:
-*     Sender sndr(endPoint);  // sender's EndPoint
-*     sndr.PostMessage(msg);
-*   HttpMessage msg has the sending adddress, e.g., localhost:8080.
-*/
 
-/////////////////////////////////////////////////////////////////////
-// ClientCounter creates a sequential number for each client
-//
 
 #include "MsgClient.h"
 #include <shellapi.h>
@@ -49,6 +39,7 @@ size_t ClientCounter::clientCount = 0;
 * - EndPoints are strings of the form ip:port, e.g., localhost:8081. This argument
 *   expects the receiver EndPoint for the toAddr attribute.
 */
+//---- Make HTTP style message----------------------------------
 HttpMessage MsgClient::makeMessage(size_t n, const std::string& body, const EndPoint& ep, std::string category, std::string type)
 {
 	HttpMessage msg;
@@ -123,9 +114,6 @@ bool MsgClient::sendFile(const std::string& filenameAbs, Socket& socket, std::st
 //----< this defines the behavior of the client >--------------------
 void MsgClient::execute(const size_t TimeBetweenMessages, const size_t NumMessages, std::string type, std::string category, std::string path )
 {
-	/*Show::attach(&std::cout);
-	Show::start();
-	Show::title("Starting HttpMessage client on thread " + Utilities::Converter<std::thread::id>::toString(std::this_thread::get_id()));*/
 	try
 	{
 		SocketSystem ss;
@@ -185,48 +173,45 @@ void MsgClient::sendFiles2Server(Socket & socket, std::string category)
 	sendMessage(m, socket);
 }
 
+//----------- Slpit function (based on delimiter) ------
 std::vector<std::string> MsgClient::split(const std::string &s, char delim) {
-	std::stringstream ss;
-	ss.str(s);
-	std::string item;
-	std::vector<std::string> elems;
-	while (std::getline(ss, item, delim)) {
-		elems.push_back(item);
-	}
-	return elems;
+	
+		std::stringstream ss;
+		ss.str(s);
+		std::string item;
+		std::vector<std::string> elems;
+		while (std::getline(ss, item, delim)) {
+			elems.push_back(item);
+		}
+		return elems;
+
 }
 
 
 
 //----------------Server Handler Functions----------------------------------------------------
 
-
-HttpMessage ServerHandler::readMessage(Socket& socket)
-{
+//----------- Read Message function ------
+HttpMessage ServerHandler::readMessage(Socket& socket) {
 	connectionClosed_ = false;
 	HttpMessage msg;
-	while (true)
-	{
+	while (true) {
 		std::string attribString = socket.recvString('\n');
-		if (attribString.size() > 1)
-		{
+		if (attribString.size() > 1) {
 			HttpMessage::Attribute attrib = HttpMessage::parseAttribute(attribString);
 			msg.addAttribute(attrib);
 		}
 		else
 			break;
 	}
-	if (msg.attributes().size() == 0)
-	{
+	if (msg.attributes().size() == 0) {
 		connectionClosed_ = true;
 		return msg;
 	}
-	if (msg.attributes()[0].first == "POST")
-	{
+	if (msg.attributes()[0].first == "POST") {
 		std::string category = msg.findValue("category");
 		std::string filename = msg.findValue("file");
-		if (filename != "")
-		{
+		if (filename != "") {
 			size_t contentSize;
 			std::string sizeString = msg.findValue("content-length");
 			if (sizeString != "")
@@ -235,19 +220,17 @@ HttpMessage ServerHandler::readMessage(Socket& socket)
 				return msg;
 			readFile(filename, contentSize, socket, category);
 		}
-		if (filename != "")
-		{
+		if (filename != "") {
 			msg.removeAttribute("content-length");
 			std::string bodyString = "<file>" + filename + "</file>";
 			std::string sizeString = Converter<size_t>::toString(bodyString.size());
 			msg.addAttribute(HttpMessage::Attribute("content-length", sizeString));
 			msg.addBody(bodyString);
 		}
-		else
-		{	size_t numBytes = 0;
+		else {
+			size_t numBytes = 0;
 			size_t pos = msg.findAttribute("content-length");
-			if (pos < msg.attributes().size())
-			{
+			if (pos < msg.attributes().size()) {
 				numBytes = Converter<size_t>::toValue(msg.attributes()[pos].second);
 				Socket::byte* buffer = new Socket::byte[numBytes + 1];
 				socket.recv(numBytes, buffer);
@@ -255,9 +238,7 @@ HttpMessage ServerHandler::readMessage(Socket& socket)
 				std::string msgBody(buffer);
 				msg.addBody(msgBody);
 				delete[] buffer;
-			}
-		}
-	}
+		} }	}
 	return msg;
 }
 
@@ -335,9 +316,10 @@ HttpMessage MsgClient::listenerFunction()
 		while (true)
 		{
 			HttpMessage msg = msgQ.deQ();
-			std::cout << msg.bodyString();
+			//std::cout << msg.bodyString();
 			
-			std::cout << msg.bodyString();		// response from server
+			std::cout << "\nResponse from server:     ";
+			std::cout << msg.bodyString() << "\n";		// response from server
 			if (!analyzeMessageFromServer(msg)) {
 				sl.close();
 				return msg;
@@ -346,7 +328,6 @@ HttpMessage MsgClient::listenerFunction()
 		}
 		return HttpMessage();
 	}
-	//return HttpMessage();
 	catch (std::exception& exc)
 	{
 		Show::write("\n  Exeception caught: ");
@@ -392,22 +373,26 @@ std::string MsgClient::getCategory(int c) {
 	}
 }
 
-
+//----------- Executed when Upload button clicked on GUI (Upload functionality) ------
 std::string MsgClient::uploadFunction(int cat, std::string files)
 {
-	//filestoOpen = files;
-	filesFromGUI = files;
-	std::string category = getCategory(cat);
-	std::thread t1(
-		[&]() { execute(200, 1, "upload", category, files); }	/////////Not Dooooooooooooone
-	);
-	t1.join();
+	
+		//filestoOpen = files;
+		filesFromGUI = files;
+		std::string category = getCategory(cat);
+		std::thread t1(
+			[&]() { execute(200, 1, "upload", category, files); }
+		);
+		t1.join();
 
-	HttpMessage x = listenerFunction();
-	std::cout << "\n\n" << x.bodyString();
-	return x.bodyString();
+		HttpMessage x = listenerFunction();
+		//std::cout << "\n\n" << x.bodyString();
+		return x.bodyString();
+
+
 }
 
+//----------- Executed when Delete button clicked on GUI (delete functionality) ------
 std::string MsgClient::deleteFunction(int cat)
 {
 	std::string category = getCategory(cat);
@@ -417,11 +402,12 @@ std::string MsgClient::deleteFunction(int cat)
 	t1.join();
 
 	HttpMessage x = listenerFunction();
-	std::cout << "\n\n" << x.bodyString();
+	//std::cout << "\n\n" << x.bodyString();
 	return x.bodyString();
 
 }
 
+//----------- Executed when Publish button clicked on GUI (Publish functionality) ------
 std::string MsgClient::publishFunction(int cat)
 {
 	std::string category = getCategory(cat);
@@ -431,10 +417,11 @@ std::string MsgClient::publishFunction(int cat)
 	t1.join();
 
 	HttpMessage x = listenerFunction();
-	std::cout << "\n\n" << x.bodyString();
+	//std::cout << "\n\n" << x.bodyString();
 	return x.bodyString();
 }
 
+//----------- Executed when Display button clicked on GUI (Display functionality) ------
 std::string MsgClient::displayFunction(int cat)
 {
 	std::string category = getCategory(cat);
@@ -449,6 +436,7 @@ std::string MsgClient::displayFunction(int cat)
 
 }
 
+//----------- Executed when Download button clicked on GUI (All Download functionality) ------
 std::string MsgClient::downloadFunction(int cat, std::string filesToOpen)
 {
 	std::string category = getCategory(cat);
@@ -456,27 +444,81 @@ std::string MsgClient::downloadFunction(int cat, std::string filesToOpen)
 		[&]() { execute(300, 1, "download", category); } 
 	);
 	t1.join();
-
 	HttpMessage x = listenerFunction();
-	std::cout << "\n\n" << x.bodyString();
+	//std::cout << "\n\n" << x.bodyString();
 	return x.bodyString();
 }
 
+//----------- Executed when Download button clicked on GUI (Lazy download functionality) ------
 std::string MsgClient::downloadLazyFunction(int cat, std::string file)
 {
 	lazyFile = file;
 	std::string category = getCategory(cat);
 	std::thread t1(
-		[&]() { execute(300, 1, "downloadlazy", category); } 
+		[&]() { execute(300, 1, "downloadlazy", category); }
 	);
 	t1.join();
 
 	HttpMessage x = listenerFunction();
-	std::cout << "\n\n" << x.bodyString();
+	//std::cout << "\n\n" << x.bodyString();
 	openBrowser("../MsgClient/DownloadFiles/" + category + "/" + file);
+
 	return x.bodyString();
+
 }
 
+//----------- Test Executive ------
+void MsgClient::testExecutive()
+{
+	std::cout << "\n\n****************************** Unit Test Executive *************************** \n";
+	std::cout << "*********** (Requirement 9) ********** \n";
+	std::cout << "\n************** (Requirement 1) - Using Visual Studio 2015 and its C++ Windows Console Projects ********** \n";
+	std::cout << "\n************** (Requirement 1) -  Using WPF to provide a required client GUI ***************** \n";
+	std::cout << "\n************** (Requirement 2) - Using C++ standard library streams and managing heap based memory with new & delete ********** \n";
+	std::cout << "\n************** (Requirement 3) - Provided a Publish Button on GUI with Linking Webpages ********** \n";
+	std::cout << "\n ------ Implemented Code publisher on Uploaded files(in the specified category)\n ------ Implemented Lazy Download\n ---------- Click Display after Publish\n ---------- Select file and click download\n ---------- Dependent files and its dependent and so on, are downloaded\n ---------- Selected File opens on Chrome\n ";
+	std::cout << "\n*******( Uploaded XMLDocument files, Published it, and Lzy downloaded XmlElement.h.html )*******\n";
+	std::cout << "\n************** (Requirement 4) - Requirements of Code Publisher (Project3) are satisfied ***************** \n";
+	std::cout << "\n************** (Requirement 5) - Can Upload, View repository published content on the Client GUI ***************** \n";
+	std::cout << "\n************** (Requirement 6) - Message-passing communication system is used, for Client to access Repository ***************** \n";
+	std::cout << "\n************** (Requirement 7) - Http style messages used for communication between Clients and Servers  ***************** \n";
+	std::cout << "\n******** (Requirement 8) - Communication system supports File transfer between Client and Server trough Stream Bytes  ********* \n";
+	std::cout << "\n************** (Requirement 10) - !!Bonus!! Lazy Download Implemented  ***************** \n";
+	std::cout << "\n ------ Once published, select file and click Download. (On GUI)\n\n\n";
+	std::cout << "\n\n ------ Other Project Requirements satisfied\n-> HTTP style messages, File stream transmission and Asynchronous messaging";
+	std::cout << "\n->Building dependency relationships, HTML file creation\n->Accept Source codes, and Delete stored files";
+	std::cout << "\n->Categories used, Display of all published files, and files with no Parent\n->Download webpages, with CSS Stylesheet and JS scripts\n";
+	std::cout << "\n************** Functionalities of Clients are, Upload, delete, display, publish and download   ***************** \n\n";
+	std::cout << "\n ++++ Upload Functionality -- Files of XML Document Directory ****\n";
+	std::cout << "----Using Category 1 now. (Application can support 3 categories)";
+	try {
+		std::string toUpload = "../TestFiles/itokcollection.h,../TestFiles/Tokenizer.cpp,../TestFiles/Utilities.cpp,../TestFiles/Utilities.h,../TestFiles/Tokenizer.h,../TestFiles/XmlDocument.cpp,../TestFiles/XmlDocument.h,";
+		toUpload.append("../TestFiles/XmlElement.cpp,../TestFiles/XmlElement.h,../TestFiles/XmlElementParts.cpp,../TestFiles/XmlElementParts.h,../TestFiles/XmlParser.cpp,../TestFiles/XmlParser.h");
+		uploadFunction(1, toUpload);
+		/*std::cout << "\ @@ Display Functionality ***** \n";
+		displayFunction(1);*/
+		std::cout << "\n ++++ Delete Functionality ***** \n";
+		deleteFunction(1);
+		std::cout << "\n ++++ Upload again (To demonstrate Publish and Download ) ***** \n";
+		uploadFunction(1, toUpload);
+		std::cout << "\n ++++ Publish Functionality (View Server console for Processing and dependency analysis) ***** \n";
+		std::cout << "---- Also Displaying files with no parents\n";
+		publishFunction(1);
+		::Sleep(15000);
+		std::cout << "\n ++++ Display Functionality ***** \n";
+		displayFunction(1);
+		std::cout << "\n\n\n ++++ (Lazy)Download Functionality (Selected XmlElement.h.html to download)***** \n";
+		downloadLazyFunction(1, "XmlElement.h.html");
+	}
+	catch (std::exception& exc)
+	{
+		Show::write("\n  Exeception caught: ");
+		std::string exMsg = "\n  " + std::string(exc.what()) + "\n\n";
+		Show::write(exMsg);
+	}
+}
+
+//------- Function to open browser----
 void MsgClient::openBrowser(std::string fpath)
 {
 	std::string f = "file:///" + FileSystem::Path::getFullFileSpec(fpath);

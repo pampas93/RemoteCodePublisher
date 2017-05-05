@@ -1,3 +1,10 @@
 ﻿  MsgClient.cpp
+  Utilities.cpp
+  Sockets.cpp
+  Logger.cpp
+  Cpp11-BlockingQueue.cpp
+  HttpMessage.cpp
+  FileSystem.cpp
+  Generating Code...
 Cpp11-BlockingQueue.obj : warning LNK4221: This object file does not define any previously undefined public symbols, so it will not be used by any link operation that consumes this library
-  MsgClient.vcxproj -> C:\Users\Abhijit\Desktop\RemoteCodePublisher_OOD\Debug\MsgClient.lib
+  MsgClient.vcxproj -> C:\Users\Abhijit\Desktop\New\RemoteCodePublisher_OOD\Debug\MsgClient.lib

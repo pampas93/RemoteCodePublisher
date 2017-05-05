@@ -1,2 +1,6 @@
-﻿     Creating library C:\Users\Abhijit\Desktop\RemoteCodePublisher_OOD\Debug\MockChannel.lib and object C:\Users\Abhijit\Desktop\RemoteCodePublisher_OOD\Debug\MockChannel.exp
-  MockChannel.vcxproj -> C:\Users\Abhijit\Desktop\RemoteCodePublisher_OOD\Debug\MockChannel.dll
+﻿  MockChannel.cpp
+  Logger.cpp
+  Cpp11-BlockingQueue.cpp
+  Generating Code...
+     Creating library C:\Users\Abhijit\Desktop\New\RemoteCodePublisher_OOD\Debug\MockChannel.lib and object C:\Users\Abhijit\Desktop\New\RemoteCodePublisher_OOD\Debug\MockChannel.exp
+  MockChannel.vcxproj -> C:\Users\Abhijit\Desktop\New\RemoteCodePublisher_OOD\Debug\MockChannel.dll

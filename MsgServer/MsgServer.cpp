@@ -1,11 +1,11 @@
-/////////////////////////////////////////////////////////////////////////
-// MsgServer.cpp - Demonstrates simple one-way HTTP style messaging    //
-//                 and file transfer                                   //
-//                                                                     //
-// Jim Fawcett, CSE687 - Object Oriented Design, Spring 2016           //
-// Application: OOD Project #4                                         //
-// Platform:    Visual Studio 2015, Dell XPS 8900, Windows 10 pro      //
-/////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+//  HtmlBuilder.cpp - Webpage CodePublisher					       //
+//																   //
+//  Language:      Visual C++ 2015                                 //
+//  Platform:      Dell Inspiron, Windows 8.1			           //
+//  Application:   Dependency Analysis - CIS 687 Project 4         //
+//  Author:        Abhijit Srikanth SUID:864888072			       //
+/////////////////////////////////////////////////////////////////////*
 /*
 * This package implements a server that receives HTTP style messages and
 * files from multiple concurrent clients and simply displays the messages
@@ -24,17 +24,6 @@
 *   Logger.h, Logger.cpp 
 *   Utilities.h, Utilities.cpp
 */
-/*
- * ToDo:
- * - pull the receiving code into a Receiver class
- * - Receiver should own a BlockingQueue, exposed through a
- *   public method:
- *     HttpMessage msg = Receiver.GetMessage()
- * - You will start the Receiver instance like this:
- *     Receiver rcvr("localhost:8080");
- *     ClientHandler ch;
- *     rcvr.start(ch);
- */
 
 
 /////////////////////////////////////////////////////////////////////
@@ -56,40 +45,25 @@
 
 //----< this defines processing to frame messages >------------------
 
-HttpMessage ClientHandler::readMessage(Socket& socket)
-{
+HttpMessage ClientHandler::readMessage(Socket& socket) {
   connectionClosed_ = false;
   HttpMessage msg;
-
-  // read message attributes
-
   while (true)
   {
     std::string attribString = socket.recvString('\n');
-    if (attribString.size() > 1)
-    {
-      HttpMessage::Attribute attrib = HttpMessage::parseAttribute(attribString);
-      msg.addAttribute(attrib);
-    }
-    else
-    {
-      break;
-    }
+	if (attribString.size() > 1){
+		HttpMessage::Attribute attrib = HttpMessage::parseAttribute(attribString);
+		msg.addAttribute(attrib); }
+	else
+		break;
   }
-  // If client is done, connection breaks and recvString returns empty string
-  if (msg.attributes().size() == 0)
-  {
+  if (msg.attributes().size() == 0){
     connectionClosed_ = true;
-    return msg;
-  }
-  // read body if POST - all messages in this demo are POSTs
-
-  if (msg.attributes()[0].first == "POST")
-  {
+    return msg; }
+  if (msg.attributes()[0].first == "POST"){
     std::string filename = msg.findValue("file");
 	std::string category = msg.findValue("category");
-    if (filename != "")
-    {
+    if (filename != "") {
       size_t contentSize;
       std::string sizeString = msg.findValue("content-length");
       if (sizeString != "")
@@ -97,26 +71,17 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
       else
         return msg;
 
-      readFile(filename, contentSize, socket, category);
-    }
-
-    if (filename != "")
-    {
-      // construct message body
+      readFile(filename, contentSize, socket, category);  }
+    if (filename != ""){
       msg.removeAttribute("content-length");
       std::string bodyString = "<file>" + filename + "</file>";
       std::string sizeString = Converter<size_t>::toString(bodyString.size());
       msg.addAttribute(HttpMessage::Attribute("content-length", sizeString));
-      msg.addBody(bodyString);
-    }
-    else
-    {
-      // read message body
-
+      msg.addBody(bodyString);  }
+    else{
       size_t numBytes = 0;
       size_t pos = msg.findAttribute("content-length");
-      if (pos < msg.attributes().size())
-      {
+      if (pos < msg.attributes().size()){
         numBytes = Converter<size_t>::toValue(msg.attributes()[pos].second);
         Socket::byte* buffer = new Socket::byte[numBytes + 1];
         socket.recv(numBytes, buffer);
@@ -124,9 +89,7 @@ HttpMessage ClientHandler::readMessage(Socket& socket)
         std::string msgBody(buffer);
         msg.addBody(msgBody);
         delete[] buffer;
-      }
-    }
-  }
+      }  }  }
   return msg;
 }
 
@@ -191,7 +154,7 @@ void ClientHandler::operator()(Socket socket)
 
 //------starting Msg Server-------------
 
-
+//-------------------- Make HTTP style message  -----------------------
 HttpMessage MsgServer::makeMessage(size_t n, const std::string& body, const EndPoint& ep, std::string category, std::string type)
 {
 	HttpMessage msg;
@@ -230,9 +193,9 @@ void MsgServer::sendMessage(HttpMessage& msg, Socket& socket)
 	socket.send(msgString.size(), (Socket::byte*)msgString.c_str());
 }
 
+//-------------------- Send file to Clients-----------------------
 bool MsgServer::sendFile(const std::string& filename, Socket& socket, std::string category, std::string cPort)
 {
-	// assumes that socket is connected
 
 	std::string fqname = "../MsgServer/ServerFiles/PublishedFiles/" +category+ "/"+filename;
 	FileSystem::FileInfo fi(fqname);
@@ -268,19 +231,15 @@ bool MsgServer::sendFile(const std::string& filename, Socket& socket, std::strin
 //----< this defines the behavior of the client >--------------------
 void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessages, int toPort, std::string type, std::string category)
 {
-	// send NumMessages messages
-
 	ServerCounter counter;
 	size_t myCount = counter.count();
 	std::string myCountString = Utilities::Converter<size_t>::toString(myCount);
 	std::string cPort = "localhost:" + std::to_string(toPort);
-
 	try
 	{
 		SocketSystem ss;
 		SocketConnecter si;
-		while (!si.connect("localhost", toPort))
-		{
+		while (!si.connect("localhost", toPort)) {
 			Show::write("\n Server waiting to connect");
 			::Sleep(100);
 		}
@@ -289,7 +248,8 @@ void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 			msg = makeMessage(1, "Upload Successful", cPort, category, type);
 			sendMessage(msg, si);		}
 		else if (type == "publish") {
-			msg = makeMessage(1, "Publish Successful", cPort, category, type);
+			std::string publishBody = "Publish Successful," + noParentString;
+			msg = makeMessage(1, publishBody, cPort, category, type);
 			sendMessage(msg, si);		}
 		else if (type == "delete") {
 			msg = makeMessage(1, "Delete Successful", cPort, category, type);
@@ -309,7 +269,59 @@ void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 			sendMessage(msg, si);
 			sendLazyFiles2Client(si, category, cPort);
 		}
-		
+	}
+	catch (std::exception& exc) {
+		Show::write("\n  Exeception caught: ");
+		std::string exMsg = "\n  " + std::string(exc.what()) + "\n\n";
+		Show::write(exMsg);
+	}
+}
+
+//-------------------- Setter for Dependency map  -----------------------
+void MsgServer::setLazyVector(std::vector<std::string> x)
+{
+	filesForLazyD_MS = x;
+}
+
+//-------------------- Setting NoParentString -----------------------
+void MsgServer::setNoParentString(std::string x)
+{
+	noParentString = x;
+}
+
+//-------------------- Getting all HTML files for delete -----------------------
+std::string MsgServer::getAllhtmlFiles(std::string category)
+{
+
+		std::string allFiles;
+		allFiles = "Display Successful,";
+		std::vector<std::string> files = FileSystem::Directory::getFiles("../MsgServer/ServerFiles/PublishedFiles/" + category + "/", "*.html");
+		for (size_t i = 0; i < files.size(); ++i)
+		{
+			if (files[i] == "indexPage.html")
+				continue;
+			allFiles.append(files[i]);
+			allFiles.append(",");
+		}
+		return allFiles;
+	
+	
+}
+
+//-------------------- Function to send files to Client -----------------------
+void MsgServer::sendFiles2Client(Socket & socket, std::string category, std::string cPort)
+{
+	try {
+		std::vector<std::string> files = FileSystem::Directory::getFiles("../MsgServer/ServerFiles/PublishedFiles/" + category + "/", "*.*");
+		for (size_t i = 0; i < files.size(); ++i)
+		{
+			Show::write("\n\n  Downloading file " + files[i]);
+			sendFile(files[i], socket, category, cPort);
+		}
+
+		HttpMessage m;															//Message sent to tell server upload is over
+		m = makeMessage(1, "Download over", cPort, category, "upload");
+		sendMessage(m, socket);
 	}
 	catch (std::exception& exc)
 	{
@@ -319,39 +331,7 @@ void MsgServer::execute(const size_t TimeBetweenMessages, const size_t NumMessag
 	}
 }
 
-void MsgServer::setLazyVector(std::vector<std::string> x)
-{
-	filesForLazyD_MS = x;
-}
-
-
-std::string MsgServer::getAllhtmlFiles(std::string category)
-{
-	std::string allFiles;
-	allFiles = "Display Successful,";
-	std::vector<std::string> files = FileSystem::Directory::getFiles("../MsgServer/ServerFiles/PublishedFiles/" + category + "/", "*.html");
-	for (size_t i = 0; i < files.size(); ++i)
-	{
-		allFiles.append(files[i]);
-		allFiles.append(",");
-	}
-	return allFiles;
-}
-
-void MsgServer::sendFiles2Client(Socket & socket, std::string category, std::string cPort)
-{
-	std::vector<std::string> files = FileSystem::Directory::getFiles("../MsgServer/ServerFiles/PublishedFiles/"+category+"/","*.*");
-	for (size_t i = 0; i < files.size(); ++i)
-	{
-		Show::write("\n\n  Downloading file " + files[i]);
-		sendFile(files[i], socket, category, cPort);
-	}
-
-	HttpMessage m;															//Message sent to tell server upload is over
-	m = makeMessage(1, "Download over", cPort, category, "upload");
-	sendMessage(m, socket);
-}
-
+//-------------------- Function to send files to Client (for Lazy Download) -----------------------
 void MsgServer::sendLazyFiles2Client(Socket & socket, std::string category, std::string cPort)
 {
 	//std::vector<std::string> files = FileSystem::Directory::getFiles("ServerFiles/PublishedFiles/" + category + "/", "*.*");
@@ -378,50 +358,42 @@ void MsgServer::sendLazyFiles2Client(Socket & socket, std::string category, std:
 //---------- Finds and returns from Port in Msg ------ 
 int ClientHandler::findFromPort(HttpMessage msg)
 {
-	//size_t port;
-	std::string temp = msg.findValue("fromAddr").substr(10, 4);
-	int x = atoi(temp.c_str());
+		//size_t port;
+		std::string temp = msg.findValue("fromAddr").substr(10, 4);
+		int x = atoi(temp.c_str());
 
-	return x;
+		return x;
+	
 }
 
-void ClientHandler::analyseMsgContent(HttpMessage msg)
-{
+//---------- Analysing received file messages ------ 
+void ClientHandler::analyseMsgContent(HttpMessage msg) {
 	std::string type = msg.findValue("type");
 	std::string body = msg.bodyString();
 	std::string category = msg.findValue("category");
 	size_t fromPort = findFromPort(msg);
-
 	MsgServer c1;
 	if (type == "upload" ) {
 		if (body.find("upload over") != std::string::npos) {
 			std::thread t1(	[&]() { c1.execute(100, 1, fromPort, type, category); } );
 			t1.join();
 		}
-		return;
-	}
+		return; }
 	else if (type == "delete" ) {
 		deleteCategory(category);
 		std::thread t1(	[&]() { c1.execute(100, 1, fromPort, type, category); } );
 		t1.join();
-		return;
-	}
+		return; }
 	else if (type == "display") {
 		std::thread t1([&]() { c1.execute(100, 1, fromPort, type, category); });
 		t1.join();
-		return;
-	}
+		return; }
 	else if (type == "publish") {
 		publishCategory(category);
 		std::thread t1(	[&]() { c1.execute(100, 1, fromPort, type, category); } );
+		c1.setNoParentString(noParentFiles);
 		t1.join();
-		return;
-	}
-	else if (type == "download") {
-		std::thread t1([&]() { c1.execute(100, 1, fromPort, type, category); });
-		t1.join();
-		return;
-	}
+		return; }
 	else if (type == "downloadlazy") {
 		filesForLazyD_CH.clear();
 		if (category == "category1")
@@ -438,6 +410,13 @@ void ClientHandler::analyseMsgContent(HttpMessage msg)
 	}
 }
 
+//else if (type == "download") {
+//	std::thread t1([&]() { c1.execute(100, 1, fromPort, type, category); });
+//	t1.join();
+//	return;
+//}
+
+//---------- Function to delete category --------------- 
 bool ClientHandler::deleteCategory(std::string category)
 {
 	std::vector<std::string> files = FileSystem::Directory::getFiles("../MsgServer/ServerFiles/SourceFiles/"+category+"/", "*.*");
@@ -455,8 +434,12 @@ bool ClientHandler::deleteCategory(std::string category)
 	return true;
 }
 
-bool ClientHandler::publishCategory(std::string category)
+//---------- Function to publish category ------ 
+void ClientHandler::publishCategory(std::string category)
 {
+	noParentFiles.clear();
+	noParentFiles.append("Files with no Parent files are::\n");
+
 	char * array[7];
 	std::string path = "../MsgServer/ServerFiles/SourceFiles/" + category + "/";
 	std::string x[] = { "simbly",path,"*.h","*.cpp","/m","/f","/r" };
@@ -464,17 +447,28 @@ bool ClientHandler::publishCategory(std::string category)
 		const char* xx = x[i].c_str();
 		array[i] = _strdup(xx);
 	}
-
+	using Item = std::pair<std::string, std::vector<std::string>>;
 	CodeAnalysis::CodeAnalysisExecutive exexec;
 	exexec.ProcessCommandLine(7, array);
-	if (category == "category1")
-		depMapCategory1 = exexec.Dependency4RemoteCodePublisher(category);
-	else if(category == "category2")
-		depMapCategory2 = exexec.Dependency4RemoteCodePublisher(category);
-	else if(category == "category3")
-		depMapCategory3 = exexec.Dependency4RemoteCodePublisher(category);
+	lazyMap temp = exexec.Dependency4RemoteCodePublisher(category);
+	for (Item x : temp)
+	{
+		std::vector<std::string> depFiles = x.second;
+		if (depFiles.size() == 0)
+		{
+			noParentFiles.append(x.first);
+			noParentFiles.append("\n");
+		}
+	}
 
-	return true;
+	if (category == "category1")
+		depMapCategory1 = temp;
+	else if (category == "category2")
+		depMapCategory2 = temp;
+	else if (category == "category3")
+		depMapCategory3 = temp;
+
+	return ;
 }
 
 //-------- For Lazy Download. file initially the selected file; mapUsed is the category based map; Recursive Function --------
@@ -503,10 +497,12 @@ void ClientHandler::LazyDownloadRecursive(std::string file, lazyMap mapUsed)
 	}
 }
 
+//---------- Getter for the Dependency map ------ 
 std::vector<std::string> ClientHandler::returnLazyVector()
 {
 	return filesForLazyD_CH;
 }
+
 
 
 

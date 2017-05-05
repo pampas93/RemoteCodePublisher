@@ -1,4 +1,65 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////
+//  MsgClient.h		 - Client Functionalities	   				   //
+//																   //
+//  Language:      Visual C++ 2015                                 //
+//  Platform:      Dell Inspiron, Windows 8.1			           //
+//  Application:   Dependency Analysis - CIS 687 Project 4         //
+//  Author:        Abhijit Srikanth SUID:864888072			       //
+/////////////////////////////////////////////////////////////////////
+/*
+Module Operations:
+==================
+
+This package implements a client that sends HTTP style messages and
+files to a server that simply displays messages and stores files.
+
+This module defines a Client Sender and Receiver
+* - The functions defined in this class are used for,
+> Rceiving Messages from server
+> Send messages to Server
+> Upload files to Server
+> Analyse messages received from Servers
+> Socket and HTTP style message creation
+
+
+Private Interface:
+=================
+MsgClient Class > ---- >
+
+* std::string filesFromGUI										- Files accepted from GUI
+* std::vector<std::string> filestoOpen							- Vector to store files need to be open
+* std::string lazyFile											- Vector to store files after lazy download
+* HttpMessage makeMessage										- Function to Make message
+* void sendMessage												- Function to Send Message
+* bool sendFile													- Function to send file
+
+ServerHandler Class > ---- >
+
+* bool connectionClosed_;										- Boolean variable used to close Server Hander
+* HttpMessage readMessage										- Function to Read message
+* bool readFile													- Function to read File
+* Async::BlockingQueue<HttpMessage>& msgQ_;						- Receiver blocking Queue
+
+
+* Required Files:
+*   HttpMessage.h, HttpMessage.cpp
+*   Cpp11-BlockingQueue.h
+*   Sockets.h, Sockets.cpp
+*   FileSystem.h, FileSystem.cpp
+*   Logger.h, Logger.cpp
+*   Utilities.h, Utilities.cpp
+
+
+Build commands
+- devenv RemoteCodePublisher_OOD.sln
+
+Maintenance History:
+====================
+ver 1.0 : 04 May 17
+- first release
+*/
+
 
 #include "../HttpMessage/HttpMessage.h"
 #include "../Sockets/Sockets.h"
@@ -42,6 +103,8 @@ public:
 	std::string displayFunction(int cat);
 	std::string downloadFunction(int cat, std::string filesToOpen);
 	std::string downloadLazyFunction(int cat, std::string file);
+
+	void testExecutive();
 
 	HttpMessage listenerFunction();
 	bool analyzeMessageFromServer(HttpMessage m);

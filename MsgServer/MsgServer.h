@@ -1,4 +1,69 @@
 #pragma once
+/////////////////////////////////////////////////////////////////////
+//  MsgServer.h		 - Server Functionalities	   				   //
+//																   //
+//  Language:      Visual C++ 2015                                 //
+//  Platform:      Dell Inspiron, Windows 8.1			           //
+//  Application:   Dependency Analysis - CIS 687 Project 4         //
+//  Author:        Abhijit Srikanth SUID:864888072			       //
+/////////////////////////////////////////////////////////////////////
+/*
+Module Operations:
+==================
+
+This package implements a client that sends HTTP style messages and
+files to a server that simply displays messages and stores files.
+
+This module defines a Client Sender and Receiver
+* - The functions defined in this class are used for,
+> Rceiving Messages from server
+> Send messages to Server
+> Upload files to Server
+> Analyse messages received from Servers
+> Socket and HTTP style message creation
+
+
+Private Interface:
+=================
+MsgServer Class > ---- >
+
+* std::string noParentString									- String to hold files with no parent files
+* std::vector<std::string> filesForLazyD_MS						- Vector to store files, for lazy Download
+* HttpMessage makeMessage										- Function to Make message
+* void sendMessage												- Function to Send Message
+* bool sendFile													- Function to send file
+
+ClientHandler Class > ---- >
+
+* std::string noParentFiles;									- String to hold files with no parent files
+* lazyMap depMapCategory1;										- Dependency map of Category1
+* lazyMap depMapCategory2;										- Dependency map of Category2
+* lazyMap depMapCategory3;										- Dependency map of Category3
+* bool connectionClosed_;										- Boolean variable used to close clientHander
+* HttpMessage readMessage										- Function to Read message
+* bool readFile													- Function to read File
+* Async::BlockingQueue<HttpMessage>& msgQ_;						- Receiver blocking Queue
+* std::vector<std::string> filesForLazyD_CH;					- Vector to store files, for lazy Download
+* std::stack<std::string> stackForLazy;							- Stack used for Lazy download function
+
+
+* Required Files:
+*   HttpMessage.h, HttpMessage.cpp
+*   Cpp11-BlockingQueue.h
+*   Sockets.h, Sockets.cpp
+*   FileSystem.h, FileSystem.cpp
+*   Logger.h, Logger.cpp
+*   Utilities.h, Utilities.cpp
+
+
+Build commands
+- devenv RemoteCodePublisher_OOD.sln
+
+Maintenance History:
+====================
+ver 1.0 : 04 May 17
+- first release
+*/
 
 
 #include "../HttpMessage/HttpMessage.h"
@@ -26,11 +91,12 @@ public:
 	int findFromPort(HttpMessage msg);
 	void analyseMsgContent(HttpMessage msg);
 	bool deleteCategory(std::string category);
-	bool publishCategory(std::string category);
+	void publishCategory(std::string category);
 	void LazyDownloadRecursive(std::string file, lazyMap mapUsed);
 	std::vector<std::string> returnLazyVector();
 
 private:
+	std::string noParentFiles;
 	lazyMap depMapCategory1;
 	lazyMap depMapCategory2;
 	lazyMap depMapCategory3;
@@ -52,7 +118,9 @@ public:
 	void sendLazyFiles2Client(Socket& socket, std::string category, std::string cPort);
 	void execute(const size_t TimeBetweenMessages, const size_t NumMessages, int toPort, std::string type, std::string category);
 	void setLazyVector(std::vector<std::string> x);
+	void setNoParentString(std::string x);
 private:
+	std::string noParentString;
 	std::vector<std::string> filesForLazyD_MS;
 	HttpMessage makeMessage(size_t n, const std::string& msgBody, const EndPoint& ep, std::string category, std::string type);
 	void sendMessage(HttpMessage& msg, Socket& socket);
